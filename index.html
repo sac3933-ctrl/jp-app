@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<style>[hidden]{display:none!important}body{margin:0}:root{padding-top:env(safe-area-inset-top,0px)}img{max-width:100%}</style>
+<style>[hidden]{display:none!important}.ai-off{display:none!important}html.nokey .ai-only{display:none!important}html.nokey .ai-off{display:revert!important}body{margin:0}:root{padding-top:env(safe-area-inset-top,0px)}img{max-width:100%}</style>
 <title>일본어 단어장</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Noto+Sans+JP:wght@400;500&display=swap">
@@ -467,7 +467,7 @@ details.more2[open] summary{margin-bottom:8px}
   <section id="manage" hidden>
     <div class="panel">
       <h2>새 단어 추가</h2>
-      <p class="note" style="margin:0">한 줄에 하나씩 입력하거나 txt 파일을 불러오세요. <b>자동으로 채우기</b>를 누르면 Claude가 읽기·뜻·예문·짝꿍 표현을 채워서 바로 넣어요. 이미 있는 단어는 건너뛰어요.<br><b>한국어 뜻</b>으로 적으면(예: 회의록, 납기 지연) 일본어 후보를 보여 드리고, 고른 단어만 넣어요.</p>
+      <p class="note" style="margin:0">한 줄에 하나씩 입력하거나 txt 파일을 불러오세요. 이미 있는 단어는 건너뛰어요.<span class="ai-only"> <b>자동으로 채우기</b>를 누르면 Claude가 읽기·뜻·예문·짝꿍 표현을 채워서 바로 넣어요.<br><b>한국어 뜻</b>으로 적으면(예: 회의록, 납기 지연) 일본어 후보를 보여 드리고, 고른 단어만 넣어요.</span><span class="ai-off"> 설정에서 내 Anthropic API 키를 넣으면 자동으로 채우기도 쓸 수 있어요.</span></p>
       <div class="row"><span class="lbl">넣을 곳</span><button class="chip" data-ad="work" aria-pressed="true">업무 단어</button><button class="chip" data-ad="daily" aria-pressed="false">일상 단어</button></div>
       <textarea id="newWords" aria-label="추가할 단어" placeholder="例) 歩留まり&#10;洗浄&#10;회의록  ← 한국어 뜻도 돼요"></textarea>
       <div class="row">
@@ -931,7 +931,7 @@ function detailHtml(w,opt={}){
     ${w.col?`<div class="xrow"><span class="xl">짝꿍 표현</span><span><span class="colx" lang="ja">${rubyHtml(colSrc(w))}${spk(kanaOf(colSrc(w)).replace(/^.*→\s*/,""),"짝꿍 표현")}</span>${w.cm?`<span class="ko">${esc(w.cm)}</span>`:""}</span></div>`:""}
     ${ex||!opt.noExBtn?`<div class="xrow"><span class="xl">예문${exs.length>1?` ${ei+1}/${exs.length}`:""}</span><span>${ex?`<span class="ja" lang="ja">${rubyHtml(ex.src)}${spk(kanaOf(ex.src),"예문")}</span><span class="ko">${esc(ex.ko)}</span>`:`<span class="note">아직 예문이 없어요.</span>`}
       <span class="row" style="margin-top:4px">${exs.length>1?`<button class="mini" data-nextex="${w.id}">다른 예문 (${ei+1}/${exs.length})</button>`:""}${opt.noExBtn?"":`<button class="mini" data-addex="${w.id}">예문 직접 추가</button>${sample?`<button class="mini" data-genex="${w.id}">예문 더 만들기</button>`:""}${ex&&ei>0&&ex.extra?`<button class="mini" data-delex="${w.id}">이 예문 삭제</button>`:""}`}</span>
-      ${!opt.noExBtn&&state.addEx===w.id?`<div class="exform"><textarea id="exJa" lang="ja" placeholder="일본어 예문 (예: 毎週金曜日に進捗報告を行う。)"></textarea><input id="exKo" placeholder="한국어 뜻 (비워 두면 Claude가 채워요)"><div class="row"><button class="btn primary" data-saveex="${w.id}">저장</button><button class="btn" data-cancelex="1">취소</button><span class="note" id="exMsg"></span></div><span class="note">외울 단어는 자동으로 표시하고, 후리가나도 자동으로 붙여요.</span></div>`:""}</span></div>`:""}
+      ${!opt.noExBtn&&state.addEx===w.id?`<div class="exform"><textarea id="exJa" lang="ja" placeholder="일본어 예문 (예: 毎週金曜日に進捗報告を行う。)"></textarea><input id="exKo" placeholder="${sample?"한국어 뜻 (비워 두면 Claude가 채워요)":"한국어 뜻"}"><div class="row"><button class="btn primary" data-saveex="${w.id}">저장</button><button class="btn" data-cancelex="1">취소</button><span class="note" id="exMsg"></span></div><span class="note">외울 단어는 자동으로 표시하고, 후리가나도 자동으로 붙여요.</span></div>`:""}</span></div>`:""}
     ${mates.length?`<div class="xrow"><span class="xl">비슷한 말</span><span><span lang="ja">${mates.map(x=>esc(x.w)).join(" · ")}</span><span class="gnote">${esc(g.note)}</span></span></div>`:""}
     ${w.note?`<div class="xrow"><span class="xl">참고</span><span>${esc(w.note)}</span></div>`:""}
     ${(()=>{if(state.tab==="today"&&quiz.phase==="play")return "";const ds=dialogs.filter(x=>(x.wordIds||[]).includes(w.id));
@@ -1066,7 +1066,7 @@ function renderSettings(){
     <div class="setrow"><span class="lbl">한 번에 풀 단어</span><div class="row">${[10,20,30].map(n=>`<button class="chip" data-ss="${n}" aria-pressed="${settings.sessionSize===n}">${n}개</button>`).join("")}</div></div>
     <p class="note" style="margin:0">맞힐 때마다 다음 복습까지 1일 → 3일 → 7일 → 14일 → 30일로 간격이 늘어나요. 틀리면 한 칸 내려가고 다음 날 다시 나오며, 그날 안에는 다시 맞혀도 칸이 오르지 않아요.</p>
     <div class="setrow"><span class="lbl">Claude 연결 (선택)</span>
-      <span class="note">자동 채우기·예문 만들기·한국어 후보·SJPT 질문·상황 대화는 Claude가 필요해요. 내 Anthropic API 키를 넣으면 이 기기에서 켜져요. 키는 이 브라우저에만 저장돼요.</span>
+      <span class="note">없어도 단어 공부·복습·따라 말하기는 모두 쓸 수 있어요. 자동 채우기·예문 만들기·한국어 후보·SJPT 질문·상황 대화 만들기는 Claude가 필요해서, 내 Anthropic API 키를 넣어야 켜져요. 키는 <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic 콘솔</a>에서 만들 수 있고, 사용한 만큼 요금이 내 계정에 청구돼요. 키는 이 기기의 이 브라우저에만 저장되고 다른 곳으로 보내지지 않아요(Anthropic 서버로 요청할 때만 써요).</span>
       ${window.__standalone?.hasKey()?`<div class="row"><span class="note">연결됨 · 모델 ${esc(window.__standalone.model())}</span><button class="btn" id="apiClear">키 지우기</button></div>`
         :`<div class="row"><input id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-..." style="flex:1 1 200px;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)"><input id="apiModel" value="${esc(window.__standalone?.model()||"")}" style="flex:1 1 140px;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)" aria-label="모델"><button class="btn primary" id="apiSave">저장</button></div>`}
     </div>
@@ -1271,7 +1271,7 @@ function renderSpeak(){
         <div class="spcard"><b>따라 말하기</b><span class="note">예문을 듣고 똑같이 따라 말해요. 천천히 듣기도 돼요.</span><button class="btn primary" data-spgo="shadow" ${n?"":"disabled"}>시작 (10문장)</button></div>
         <div class="spcard"><b>말로 답하기</b><span class="note">한국어 문장을 보고 일본어로 말한 뒤 정답과 비교해요.</span><button class="btn primary" data-spgo="say" ${n?"":"disabled"}>시작 (10문장)</button></div>
         <div class="spcard"><b>상황 대화</b><span class="note">배운 단어로 교재 같은 짧은 대화문을 만들어요. 듣기·롤플레이도 돼요.</span><button class="btn primary" data-spgo="dlg">대화 보기·만들기${dialogs.length?` (${dialogs.length})`:""}</button></div>
-        <div class="spcard"><b>SJPT식 질문</b><span class="note">Claude가 등록 단어로 시험형 질문을 내고, 내 답을 첨삭해 줘요.</span>${sample?`<button class="btn primary" data-spgo="sjpt">질문 받기</button>`:`<span class="note">Claude 사용이 허용되어야 쓸 수 있어요.</span>`}</div>
+        <div class="spcard"><b>SJPT식 질문</b><span class="note">Claude가 등록 단어로 시험형 질문을 내고, 내 답을 첨삭해 줘요.</span>${sample?`<button class="btn primary" data-spgo="sjpt">질문 받기</button>`:`<span class="note">설정에서 내 Anthropic API 키를 넣으면 쓸 수 있어요. <button class="link" data-openset="1">설정 열기</button></span>`}</div>
       </div>
       <p class="note" style="margin:12px 0 0">${SRC?"🎙 버튼은 브라우저 음성 인식을 써요. 마이크가 막힌 화면에서는 스스로 확인하는 방식으로 바뀌어요.":"이 브라우저는 음성 인식을 지원하지 않아요. 소리 내어 말한 뒤 스스로 확인하세요."} 휴대폰에서는 키보드의 마이크(음성 입력)로 답을 넣어도 돼요.</p>
     </div>`;
@@ -1351,7 +1351,7 @@ JSON 객체 하나만 출력: {"q":"일본어 질문(정중체, 1~2문장)","qr"
     o=scrub(o);if(!o||!o.q) throw {code:"empty_completion"};
     sp.q={type:sp.qtype,words:pool.map(w=>w.w),src:await rubyFill(String(o.q),String(o.qr||"")),ko:String(o.ko||""),tip:String(o.tip||"")};
     sp.fb=null;sp.ans="";
-  }catch(e){sp.err=e?.code==="not_granted"?"Claude 사용을 허용해야 질문을 만들 수 있어요.":"질문을 만들지 못했어요. 잠시 뒤 다시 해 주세요.";}
+  }catch(e){sp.err=e?.code==="not_granted"?"설정에서 API 키를 확인해야 질문을 만들 수 있어요.":"질문을 만들지 못했어요. 잠시 뒤 다시 해 주세요.";}
   sp.busy=false;renderSjpt();
 }
 async function spCheck(){
@@ -1366,7 +1366,7 @@ async function spCheck(){
 JSON 객체 하나만 출력: {"good":"잘한 점 한 줄","fixed":"학습자 답을 최소한으로 고쳐 자연스럽게 만든 일본어","fixedr":"fixed와 같은 문장에 한자마다 {漢字|ひらがな}","fixedKo":"fixed의 한국어 해석","points":["고친 이유나 문법·표현 포인트 (최대 4개)"],"better":"같은 질문에 대한 한 단계 높은 수준의 모범 답(3~4문장, 정중체)","betterr":"better에 {漢字|ひらがな} 후리가나","betterKo":"better의 한국어 해석"}`,{modelTier:"default"});
     o=scrub(o);if(!o||!o.fixed) throw {code:"empty_completion"};
     sp.fb={good:String(o.good||""),fixed:await rubyFill(String(o.fixed),String(o.fixedr||"")),fixedKo:String(o.fixedKo||""),points:(Array.isArray(o.points)?o.points:[]).slice(0,4).map(String),better:o.better?await rubyFill(String(o.better),String(o.betterr||"")):"",betterKo:String(o.betterKo||"")};
-  }catch(e){sp.err=e?.code==="not_granted"?"Claude 사용을 허용해야 첨삭을 받을 수 있어요.":"첨삭하지 못했어요. 잠시 뒤 다시 해 주세요.";}
+  }catch(e){sp.err=e?.code==="not_granted"?"설정에서 API 키를 확인해야 첨삭을 받을 수 있어요.":"첨삭하지 못했어요. 잠시 뒤 다시 해 주세요.";}
   sp.busy=false;renderSjpt();
 }
 function spClick(t,d){
@@ -1477,7 +1477,7 @@ points는 2~3개.`,{modelTier:"default"});
     dialogs=[{id,...doc},...dialogs.filter(x=>x.id!==id)];
     try{await db.collection("dialogs").doc(id).set(doc);}catch(_){toast("대화를 저장하지 못했어요. 화면에서는 볼 수 있어요.");}
     sp.dcur=id;sp.dv="view";sp.drole=null;sp.dshow={};sp.dwords=null;
-  }catch(e){sp.derr=e?.code==="not_granted"?"Claude 사용을 허용해야 대화를 만들 수 있어요.":"대화를 만들지 못했어요. 잠시 뒤 다시 해 주세요.";sp.dv="list";}
+  }catch(e){sp.derr=e?.code==="not_granted"?"설정에서 API 키를 확인해야 대화를 만들 수 있어요.":"대화를 만들지 못했어요. 잠시 뒤 다시 해 주세요.";sp.dv="list";}
   sp.dbusy=false;renderSpeak();
 }
 /* 대화 음성: 기기의 일본어 남성·여성 목소리를 찾아 A·B에 나눠 씀 (없으면 높낮이로 구분) */
@@ -1527,12 +1527,12 @@ function renderDlg(){
   if(sp.dv==="view"){
     const dl=dialogs.find(x=>x.id===sp.dcur);if(!dl){sp.dv="list";return renderDlg();}
     box.innerHTML=`<div class="panel">${head}${dlgHtml(dl)}
-      <div class="row"><button class="btn" id="dlBack">← 대화 목록</button><button class="btn primary" id="dlAgain">같은 단어로 다른 대화</button><button class="btn danger" data-dldel="${dl.id}">삭제</button></div></div>`;
+      <div class="row"><button class="btn" id="dlBack">← 대화 목록</button><button class="btn primary ai-only" id="dlAgain">같은 단어로 다른 대화</button><button class="btn danger" data-dldel="${dl.id}">삭제</button></div></div>`;
     return;
   }
   const mine=dialogs.slice().sort((a,b)=>(b.at||0)-(a.at||0));
   box.innerHTML=`<div class="panel">${head}
-    <div class="seg seg2" role="group" aria-label="장면 종류"><button data-dscope="work" aria-pressed="${deck==="work"}">업무 장면</button><button data-dscope="daily" aria-pressed="${deck==="daily"}">일상 장면</button></div>
+    <p class="note ai-off">새 대화를 만들려면 설정에서 내 Anthropic API 키를 넣어 주세요. 저장된 대화는 그대로 볼 수 있어요. <button class="link" data-openset="1">설정 열기</button></p><div class="ai-only"><div class="seg seg2" role="group" aria-label="장면 종류"><button data-dscope="work" aria-pressed="${deck==="work"}">업무 장면</button><button data-dscope="daily" aria-pressed="${deck==="daily"}">일상 장면</button></div>
     <div class="dlstep"><span class="lbl">장면</span>
       <div class="row">${["",...Object.keys(DLG_SCENES[deck])].map(c=>`<button class="chip" data-dcat="${esc(c)}" aria-pressed="${sp.dcat===c&&!sp.dfree}">${c||"아무거나"}</button>`).join("")}</div>
       ${sp.dcat&&!sp.dfree?`<div class="row subchips"><button class="chip" data-dscene="" aria-pressed="${!sp.dscene}">이 중 아무거나</button>${DLG_SCENES[deck][sp.dcat].map(x=>`<button class="chip" data-dscene="${esc(x)}" aria-pressed="${sp.dscene===x}">${esc(x)}</button>`).join("")}</div>`:""}
@@ -1545,7 +1545,7 @@ function renderDlg(){
     </details>
     <div class="row"><span class="lbl">넣을 단어</span>${sp.dwords?`<span class="note" lang="ja">${sp.dwords.map(id=>words.find(w=>w.id===id)?.w).filter(Boolean).map(esc).join("、")}</span><button class="mini" id="dlWordsClear">다른 단어로</button>`
       :[["today","오늘 공부한 단어"],["flag","다시 보기 단어"],["rand","배운 단어 무작위"]].map(([k,v])=>`<button class="chip" data-dsrc="${k}" aria-pressed="${sp.dsrc===k}">${v}</button>`).join("")}</div>
-    <div class="row"><button class="btn primary" id="dlMake">대화 만들기</button><span class="note">배운 단어 2~4개를 넣어 4~6줄로 만들어요.</span></div>
+    <div class="row"><button class="btn primary" id="dlMake">대화 만들기</button><span class="note">배운 단어 2~4개를 넣어 4~6줄로 만들어요.</span></div></div>
     ${sp.derr?`<p class="note err">${esc(sp.derr)}</p>`:""}
     <h2 style="margin:16px 0 6px;font-size:1rem">저장한 대화 ${mine.length}개</h2>
     ${mine.length?`<div class="list">${mine.map(x=>`<div class="lrow"><button data-dlopen="${x.id}"><span class="meta"><b>${esc(x.title)}</b> <span class="note">${esc(x.scene)}</span></span><span class="note">${new Date(x.at||0).toLocaleDateString("ko-KR",{month:"numeric",day:"numeric"})}</span></button></div>`).join("")}</div>`:`<p class="note">아직 만든 대화가 없어요.</p>`}
@@ -1564,7 +1564,7 @@ async function addExpression(expr,deck,ctxLine){
     const g=got.find(o=>o.w===expr)||got[0];if(g&&(!g.c||g.c==="gen"))g.c="gram";
     const n=await saveWords(g?[g]:[]);addedExpr[expr]=g?g.w:true;
     toast(n?`단어장에 추가했어요: ${g.w}${g.w!==expr?` (${expr})`:""}`:"이미 단어장에 있어요.");
-  }catch(e){toast(e?.code==="not_granted"?"Claude 사용을 허용해야 추가할 수 있어요.":"추가하지 못했어요. 잠시 뒤 다시 해 주세요.");}
+  }catch(e){toast(e?.code==="not_granted"?"설정에서 API 키를 확인해야 추가할 수 있어요.":"추가하지 못했어요. 잠시 뒤 다시 해 주세요.");}
   finally{delete addingExpr[expr];state.addDeck=prevDeck;fillCtl=prevCtl;renderSpeak();}
 }
 function dlgClick(t,d){
@@ -1620,7 +1620,7 @@ let drafts=[];
 function syncDrafts(){drafts=drafts.map((d,i)=>$("d"+i+"w")?{...d,...readFields("d"+i)}:d);}
 function renderDrafts(){
   const have=new Set(words.map(w=>w.w));
-  $("drafts").innerHTML=drafts.length?`<div class="drafthead"><b>직접 입력</b><span class="note">단어·읽기·뜻만 적어도 돼요. 비운 칸은 "Claude로 채우기"로 채울 수 있어요.</span><div class="row"><button class="btn primary" data-dsave="1">저장</button><button class="btn" data-dclear="1">취소</button></div></div>`+drafts.map((d,i)=>`<div class="draft">${fields("d"+i,d)}<div class="row">${have.has(d.w)?'<span class="note">이미 단어장에 있어요.</span>':""}${sample?`<button class="btn" data-dfill="${i}">Claude로 채우기</button>`:""}</div></div>`).join(""):"";
+  $("drafts").innerHTML=drafts.length?`<div class="drafthead"><b>직접 입력</b><span class="note">단어·읽기·뜻만 적어도 돼요.${sample?' 비운 칸은 "Claude로 채우기"로 채울 수 있어요.':""}</span><div class="row"><button class="btn primary" data-dsave="1">저장</button><button class="btn" data-dclear="1">취소</button></div></div>`+drafts.map((d,i)=>`<div class="draft">${fields("d"+i,d)}<div class="row">${have.has(d.w)?'<span class="note">이미 단어장에 있어요.</span>':""}${sample?`<button class="btn" data-dfill="${i}">Claude로 채우기</button>`:""}</div></div>`).join(""):"";
   $("draftActs").hidden=true;
 }
 function renderManage(){
@@ -1732,7 +1732,7 @@ async function autofill(){
     try{
       const items=[];for(let i=0;i<kos.length;i+=20)items.push(...await askCandidates(kos.slice(i,i+20)));
       krPick={items,ja};$("fillMsg").textContent="";renderKrPick();$("krPick").scrollIntoView({block:"nearest"});
-    }catch(e){$("fillMsg").className=e?.code==="cancelled"?"note":"note err";$("fillMsg").textContent=e?.code==="cancelled"?"중지했어요.":e?.code==="not_granted"?"Claude 사용을 허용해야 후보를 찾을 수 있어요.":"후보를 찾지 못했어요. 잠시 뒤 다시 눌러 주세요.";}
+    }catch(e){$("fillMsg").className=e?.code==="cancelled"?"note":"note err";$("fillMsg").textContent=e?.code==="cancelled"?"중지했어요.":e?.code==="not_granted"?"설정에서 API 키를 확인해야 후보를 찾을 수 있어요.":"후보를 찾지 못했어요. 잠시 뒤 다시 눌러 주세요.";}
     finally{$("autofill").disabled=false;$("stopFill").hidden=true;fillCtl=null;}
     return;
   }
@@ -1752,7 +1752,7 @@ async function autofill(){
     }
     $("fillMsg").textContent=`${filled}개를 ${state.addDeck==="daily"?"일상":"업무"} 단어장에 추가했어요${skipped?` (이미 있는 ${skipped}개는 건너뜀)`:""}. 오늘 화면의 새 단어로 차례대로 나와요.`;
   }catch(e){
-    const msg={cancelled:"중지했어요.",not_granted:"Claude 사용을 허용하지 않아 자동 채우기를 쓸 수 없어요.",rate_limited:"요청이 많아요. 잠시 뒤 다시 눌러 주세요.",invalid_json:"결과를 읽지 못했어요. 다시 눌러 주세요.",empty_completion:"결과가 비어 있어요. 다시 눌러 주세요.",quota:"저장 공간이 가득 찼어요.",save_failed:"저장하지 못했어요. 다시 눌러 주세요."}[e?.code]||"자동 채우기에 실패했어요. 잠시 뒤 다시 해 주세요.";
+    const msg={cancelled:"중지했어요.",not_granted:"API 키가 맞지 않아 자동 채우기를 쓸 수 없어요. 설정에서 확인해 주세요.",rate_limited:"요청이 많아요. 잠시 뒤 다시 눌러 주세요.",invalid_json:"결과를 읽지 못했어요. 다시 눌러 주세요.",empty_completion:"결과가 비어 있어요. 다시 눌러 주세요.",quota:"저장 공간이 가득 찼어요.",save_failed:"저장하지 못했어요. 다시 눌러 주세요."}[e?.code]||"자동 채우기에 실패했어요. 잠시 뒤 다시 해 주세요.";
     $("fillMsg").className=e?.code==="cancelled"?"note":"note err";
     $("fillMsg").textContent=msg+(done?` 앞의 ${done}개는 저장됐고, 남은 단어는 입력칸에 있어요.`:"");
     if(["not_granted","sampling_disabled","capability_disabled"].includes(e?.code)) sample=null;
@@ -1822,7 +1822,7 @@ async function genExamples(id,btn){
     const exs=[...(Array.isArray(w.exs)?w.exs:[]),...add];w.exs=exs;writeWord(id,{exs});
     state.exIdx[id]=examples(w).length-add.length;
     toast(`예문 ${add.length}개를 추가했어요.`);rerender();
-  }catch(e){toast(e?.code==="not_granted"?"Claude 사용을 허용해야 예문을 만들 수 있어요.":"예문을 만들지 못했어요. 잠시 뒤 다시 해 주세요.");btn.disabled=false;btn.textContent="예문 더 만들기";}
+  }catch(e){toast(e?.code==="not_granted"?"설정에서 API 키를 확인해야 예문을 만들 수 있어요.":"예문을 만들지 못했어요. 잠시 뒤 다시 해 주세요.");btn.disabled=false;btn.textContent="예문 더 만들기";}
 }
 
 /* 백업·복원 */
@@ -1898,7 +1898,7 @@ $("manual").onclick=()=>{syncDrafts();
   if(drafts.length){toast("작성 중인 단어를 먼저 저장하거나 취소해 주세요.");$("drafts").scrollIntoView({block:"nearest"});$("d0w")?.focus();return;}
   const lines=parseInput(),t=lines.slice(0,1);(t.length?t:[""]).forEach(x=>{const ko=HANGUL.test(x)&&!JPCH.test(x),w=ko?"":x;drafts.push({w,r:"",m:ko?x:"",ja:"",ko:"",c:state.addDeck==="daily"?"life":"gen",deck:state.addDeck==="daily"?"daily":"",chk:true});});$("newWords").value=lines.slice(1).join("\n");renderDrafts();$("drafts").scrollIntoView({block:"nearest"});(drafts[0].w?$("d0r"):$("d0w"))?.focus();
   if(lines.length>1)$("fillMsg").textContent=`직접 입력은 한 번에 1개씩이에요. 나머지 ${lines.length-1}개는 입력칸에 남겨 뒀어요.`;};
-$("saveDrafts").onclick=async()=>{syncDrafts();$("saveDrafts").disabled=true;try{const ready=drafts.filter(d=>d.w.trim()),rest=drafts.filter(d=>!d.w.trim());const n=await saveWords(ready);drafts=rest;renderDrafts();$("fillMsg").className="note";$("fillMsg").textContent=(n?`추가했어요: ${ready.map(d=>d.w).join(", ")}.`:ready.length?"추가할 새 단어가 없어요.":"")+(rest.length?` 단어(일본어) 칸이 빈 ${rest.length}개는 남겨 뒀어요. 일본어를 적거나 "Claude로 채우기"를 눌러 주세요.`:"");}catch(_){$("fillMsg").className="note err";$("fillMsg").textContent="일부만 저장했어요. 다시 눌러 주세요.";}$("saveDrafts").disabled=false;};
+$("saveDrafts").onclick=async()=>{syncDrafts();$("saveDrafts").disabled=true;try{const ready=drafts.filter(d=>d.w.trim()),rest=drafts.filter(d=>!d.w.trim());const n=await saveWords(ready);drafts=rest;renderDrafts();$("fillMsg").className="note";$("fillMsg").textContent=(n?`추가했어요: ${ready.map(d=>d.w).join(", ")}.`:ready.length?"추가할 새 단어가 없어요.":"")+(rest.length?` 단어(일본어) 칸이 빈 ${rest.length}개는 남겨 뒀어요. 일본어를 적${sample?'거나 "Claude로 채우기"를 눌러':"어"} 주세요.`:"");}catch(_){$("fillMsg").className="note err";$("fillMsg").textContent="일부만 저장했어요. 다시 눌러 주세요.";}$("saveDrafts").disabled=false;};
 $("clearDrafts").onclick=()=>{drafts=[];renderDrafts();$("fillMsg").textContent="";};
 $("search").oninput=e=>{state.q=e.target.value;renderManage();};
 $("txtFile").onchange=async e=>{
@@ -1942,7 +1942,7 @@ document.addEventListener("click",async e=>{
   if(t.id==="goPractice"){startSession("practice");return;}
   if(t.id==="goSpeakT"){sp.mode=null;setTab("speak");return;}
   if(t.id==="goDlgT"){sp.mode="dlg";sp.dv="list";sp.derr="";setTab("speak");return;}
-  if(t.id==="openSet"||t.id==="openSet2"){openSettings();return;}
+  if(t.id==="openSet"||t.id==="openSet2"||t.dataset.openset){openSettings();return;}
   if(d.closeset){$("setSheet").hidden=true;return;}
   if(t.id==="bkNow2"){$("setSheet").hidden=true;setTab("manage");backup("json");return;}
   if(d.calm){const [yy,mm]=(state.calMonth||today().slice(0,7)).split("-").map(Number);const nd=new Date(yy,mm-1+(+d.calm),1);state.calMonth=`${nd.getFullYear()}-${String(nd.getMonth()+1).padStart(2,"0")}`;state.calDay=null;renderToday();return;}
@@ -2026,6 +2026,7 @@ applyFuri();
   if(!window.claude?.use){$("today").innerHTML='<div class="panel"><div class="empty">단어 저장소를 열지 못했어요. 브라우저의 사이트 데이터 저장이 막혀 있지 않은지 확인해 주세요.</div></div>';return;}
   [db,sample,downloads]=await Promise.all([claude.use("db"),claude.use("sample"),claude.use("downloads")]);
   if(!db){$("today").innerHTML='<div class="panel"><div class="empty">단어 저장소를 열지 못했어요. 브라우저의 사이트 데이터 저장이 막혀 있지 않은지 확인해 주세요.</div></div>';return;}
+  document.documentElement.classList.toggle("nokey",!sample);
   if(!sample){$("autofill").hidden=true;}
   col=db.collection("words");
   db.doc("meta/settings").onSnapshot(s=>{if(s.exists){const v=plain(s.data());settings={...settings,...v};if(v.furi&&FURI[v.furi]&&v.furi!==furiMode){furiMode=v.furi;applyFuri();}if(v.deck&&DECKS[v.deck])quiz.deck=v.deck;}if(loaded&&quiz.phase==="home")renderToday();},()=>{});
