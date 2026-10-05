@@ -440,6 +440,29 @@ details.more2[open] summary{margin-bottom:8px}
   // ---- 앱 설치·오프라인: 서비스 워커 등록, 저장 데이터가 지워지지 않게 요청 ----
   if("serviceWorker" in navigator&&location.protocol.startsWith("http"))addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(e=>console.warn("서비스 워커 등록 실패",e)));
   try{navigator.storage?.persist?.().catch(()=>{});}catch(_){}
+  // ---- 처음 열었을 때 안내: 홈 화면에 추가, 기록은 이 기기에만 저장 ----
+  let installEvt=null;
+  addEventListener("beforeinstallprompt",e=>{e.preventDefault();installEvt=e;const b=document.getElementById("tipInstall");if(b)b.hidden=false;});
+  addEventListener("DOMContentLoaded",()=>{
+    const installed=matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+    if(installed||ls.get("jpvocab-tip-off"))return;
+    const ua=navigator.userAgent,ios=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1),android=/Android/.test(ua);
+    const how=ios?"Safari 아래(아이패드는 위)의 <b>공유 버튼</b>(□↑)을 누르고 <b>홈 화면에 추가</b>를 고르세요. 카카오톡 등 앱 안에서 열었다면 먼저 Safari로 열어 주세요."
+      :android?"Chrome 오른쪽 위 <b>⋮ 메뉴</b>에서 <b>홈 화면에 추가</b>(또는 <b>앱 설치</b>)를 고르세요."
+      :"주소창 오른쪽의 <b>설치</b> 아이콘이나 브라우저 메뉴에서 앱으로 설치할 수 있어요.";
+    const el=document.createElement("div");el.className="panel";el.id="firstTip";
+    el.innerHTML=`<h2 style="margin:0">처음 오셨나요?</h2>
+      <p class="note" style="margin:0"><b>홈 화면에 추가</b>하면 앱처럼 바로 열리고, 인터넷이 없어도 쓸 수 있어요. ${how}</p>
+      <p class="note" style="margin:0">공부 기록은 <b>이 기기에만</b> 저장돼요. 다른 기기로 옮기거나 혹시 모를 때를 위해 가끔 <b>설정(⚙) → 전체 데이터 내보내기</b>로 백업해 두세요.</p>
+      <div class="row"><button class="btn primary" id="tipInstall"${installEvt?"":" hidden"}>지금 설치하기</button><button class="btn" id="tipClose">알겠어요</button></div>`;
+    const hdr=document.querySelector(".wrap > header");if(hdr)hdr.after(el);
+  });
+  document.addEventListener("click",e=>{
+    const t=e.target.closest("button");if(!t)return;
+    if(t.id==="tipClose"){ls.set("jpvocab-tip-off","1");document.getElementById("firstTip")?.remove();}
+    if(t.id==="tipInstall"&&installEvt){installEvt.prompt();installEvt.userChoice.finally(()=>{installEvt=null;t.hidden=true;});}
+  });
+  addEventListener("appinstalled",()=>{ls.set("jpvocab-tip-off","1");document.getElementById("firstTip")?.remove();});
   document.addEventListener("change",e=>{if(e.target.id==="allImport"&&e.target.files[0])window.__standalone.importAll(e.target.files[0]);});
 })();
 
