@@ -6,6 +6,15 @@
 <meta name="color-scheme" content="light dark">
 <style>[hidden]{display:none!important}.ai-off{display:none!important}html.nokey .ai-only{display:none!important}html.nokey .ai-off{display:revert!important}body{margin:0}:root{padding-top:env(safe-area-inset-top,0px)}img{max-width:100%}</style>
 <title>일본어 단어장</title>
+<meta name="description" content="업무·일상 일본어 단어를 복습 간격에 맞춰 외우는 단어장">
+<meta name="theme-color" content="#1E5C78">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon-64.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="단어장">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Noto+Sans+JP:wght@400;500&display=swap">
 <style>
@@ -428,6 +437,9 @@ details.more2[open] summary{margin-bottom:8px}
     if(t.id==="apiClear"){ls.del(APIKEY);location.reload();}
     if(t.id==="allExport")window.__standalone.exportAll();
   });
+  // ---- 앱 설치·오프라인: 서비스 워커 등록, 저장 데이터가 지워지지 않게 요청 ----
+  if("serviceWorker" in navigator&&location.protocol.startsWith("http"))addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(e=>console.warn("서비스 워커 등록 실패",e)));
+  try{navigator.storage?.persist?.().catch(()=>{});}catch(_){}
   document.addEventListener("change",e=>{if(e.target.id==="allImport"&&e.target.files[0])window.__standalone.importAll(e.target.files[0]);});
 })();
 
