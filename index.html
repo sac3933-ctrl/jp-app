@@ -1267,7 +1267,7 @@ function spStart(mode){
 function micBtn(id){
   const typed=id==="spMic";
   if(!SRC||srBlocked) return typed?`<div class="dict"><input id="spType" lang="ja" autocomplete="off" placeholder="키보드의 🎤로 말하면 여기에 입력돼요" value="${esc(sp.heard)}"><button class="btn" id="spCmp">비교하기</button></div>
-    <span class="note">이 브라우저에서는 음성 인식을 쓸 수 없어요(Chrome·Edge에서 https 주소로 열면 쓸 수 있어요). 대신 키보드의 음성 입력으로 말하면 예문과 얼마나 같은지 비교해 줘요.</span>`
+    <span class="note">이 기기·브라우저에서는 🎙 버튼을 쓸 수 없어요. 대신 키보드의 🎤(음성 입력)로 말하면 예문과 얼마나 같은지 비교해 줘요. (아이폰·아이패드 홈 화면 앱에서 안 되면 Safari로 열어 보세요. 마이크 권한도 확인해 주세요.)</span>`
     :`<span class="note">키보드의 🎤(음성 입력)로 위 칸에 말해 넣을 수 있어요.</span>`;
   return `<button class="btn" id="${id}">${sp.listening?"듣는 중… (누르면 멈춤)":"🎙 말해 보기"}</button>`;
 }
