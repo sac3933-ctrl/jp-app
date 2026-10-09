@@ -295,6 +295,7 @@ textarea{min-height:76px;font-family:var(--f-jp);resize:vertical}
 .scope-c{font-size:.82rem;color:var(--accent);white-space:nowrap}
 .chip .cnt{opacity:.7;font-size:.9em}.chip .due{font-size:.8em;color:var(--warn)}.chip[aria-pressed="true"] .due{color:inherit;opacity:.85}
 #scopeSheet .chip{padding:8px 12px}
+.scopeask{display:grid;gap:8px;padding:12px;border-radius:12px;background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent)}.scopeask b{color:var(--warn)}.scopeask .row{flex-wrap:wrap}
 .hero-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .hero-top .streak{font-size:.82rem;font-weight:700;color:var(--ok);background:var(--ok-soft);padding:3px 10px;border-radius:999px}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
@@ -648,6 +649,10 @@ function scopeLabel(){const d=quiz.deck,c=quiz.cats,dk=d==="all"?"":DECKS[d];
   if(!c.length)return d==="all"?"전체":dk+" 단어장";
   const cs=c.length<=2?c.map(k=>CATS[k]).join(", "):`${CATS[c[0]]} 외 ${c.length-1}개 분야`;return dk?dk+" · "+cs:cs;}
 const scopeN=()=>words.filter(w=>inScope(w,quiz.deck)).length;
+const scopeKey=(d,c)=>(d||"all")+"|"+[...(c||[])].sort().join(",");
+/* 풀던 묶음이 지금 범위와 다른지 (예전 묶음은 범위 정보가 없으면 단어장만 비교) */
+function batchOff(rs){if(!rs)return false;return scopeKey(rs.deck,rs.cats)!==scopeKey(quiz.deck,quiz.cats);}
+const batchScope=rs=>rs.scope||(rs.deck&&rs.deck!=="all"?DECKS[rs.deck]+" 단어장":"전체");
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 
@@ -925,6 +930,7 @@ function makeQuestion(w){
 }
 const studiedToday=d=>{const t=today();return words.filter(w=>inScope(w,d)&&(w.lastOk===t||w.lastMiss===t||w.first===t));};
 function startSession(mode){
+  quiz.bScope=null;
   const deck=quiz.deck,size=settings.sessionSize|0||20;
   let items=[];
   if(mode==="leech"){
@@ -972,7 +978,8 @@ function saveSessionNow(){
   clearTimeout(sessT);sessT=null;
   if(!quiz.items.length||(quiz.phase!=="play"&&quiz.phase!=="done")) return;
   if(!quiz.items.some(q=>!itemDone(q))) return;
-  const data={day:today(),mode:quiz.mode,deck:quiz.deck,i:quiz.i,n:quiz.items.length,items:quiz.items.map(serQ),at:Date.now()};
+  const bs=quiz.bScope||{deck:quiz.deck,cats:quiz.cats.slice(),scope:scopeLabel()};
+  const data={day:today(),mode:quiz.mode,deck:bs.deck,cats:bs.cats,scope:bs.scope,i:quiz.i,n:quiz.items.length,items:quiz.items.map(serQ),at:Date.now()};
   savedSession=data;setMeta("session",data);
 }
 function saveSession(){clearTimeout(sessT);sessT=setTimeout(saveSessionNow,300);}
@@ -998,7 +1005,7 @@ function resumeSession(){
   s.items.forEach((o,k)=>{const q=deserQ(o);if(q)items.push(q);else if(k<s.i)i--;});
   if(!items.length){clearSession();renderToday();return;}
   const first=items.findIndex(q=>!itemDone(q));if(first>=0)i=first;
-  quiz.items=items;quiz.i=Math.max(0,Math.min(i,items.length-1));quiz.mode=s.mode||"today";quiz.deck=s.deck||quiz.deck;quiz.phase="play";renderToday();
+  quiz.items=items;quiz.i=Math.max(0,Math.min(i,items.length-1));quiz.mode=s.mode||"today";quiz.bScope={deck:s.deck||"all",cats:s.cats||[],scope:s.scope||""};quiz.phase="play";renderToday();
 }
 const qDone=q=>q.type==="intro"?q.done:(q.type==="recall"||q.type==="type"||q.type==="produce")?q.result!==undefined:q.parts.every((_,i)=>q.picks[i]!==undefined);
 function finish(q,ok){
@@ -1161,7 +1168,9 @@ function renderToday(){
     const side=rs&&rs.mode!=="today"; // 다시 보기·자주 틀리는 단어 연습은 오늘 학습을 가리지 않고 작은 줄로
     const sideLine=side?`<div class="cta-sub"><span>${rs.mode==="flag"?"다시 보기 연습을":rs.mode==="leech"?"자주 틀리는 단어 연습을":rs.mode==="practice"?"오늘 단어 다시 풀기를":"틀린 단어 다시 풀기를"} 하던 중이에요 (${rs.left}개 남음)</span><button class="link" id="goResume">이어서</button></div>`:"";
     if(rs&&!side){
-      main=`${prog}<button class="cta" id="goResume"><span class="cta-t">이어서 풀기</span><span class="cta-s">${rs.left}개 남음${rs.nextW?` · 다음 <span lang="ja">${esc(rs.nextW)}</span>`:""}</span></button>`;
+      const off=batchOff(rs);
+      main=`${prog}<button class="cta" id="goResume"><span class="cta-t">이어서 풀기</span><span class="cta-s">${rs.left}개 남음${rs.nextW?` · 다음 <span lang="ja">${esc(rs.nextW)}</span>`:""}${off?` · 이전 범위: ${esc(batchScope(rs))}`:""}</span></button>
+        <div class="cta-sub">${off?`<span class="note">지금 범위(${esc(scopeLabel())})와 다른 묶음이에요.</span>`:""}<button class="link" id="dropResume">${off?"닫고 지금 범위로 새로 시작":"풀던 묶음 닫고 새로 시작"}</button></div>`;
     }else if(total){
       main=`${prog}<button class="cta" id="goToday"><span class="cta-t">${total>size?`${size}개 먼저 풀기`:"오늘 학습 시작"}</span><span class="cta-s">복습 ${rev.length} · 새 단어 ${nw.length}${total>size?` · 전체 ${total}개 남음`:""}</span></button>${sideLine}`;
     }else{
@@ -1212,7 +1221,10 @@ function renderScope(){
   const b=$("scopeBody");if(!b)return;const d=quiz.deck;
   const decks=[["all","전체"],["work","업무"],["daily","일상"]].map(([k,v])=>{const n=words.filter(w=>inDeck(w,k)).length;return `<button class="chip" data-qd="${k}" aria-pressed="${d===k}"${n?"":" disabled"}>${v} <span class="cnt">${n}</span></button>`;}).join("");
   const cats=Object.keys(CATS).map(k=>[k,words.filter(w=>inDeck(w,d)&&(w.c||"gen")===k)]).filter(([,a])=>a.length);
-  b.innerHTML=`<div class="setrow"><span class="lbl">단어장</span><div class="row">${decks}</div></div>
+  const rs=quiz.phase==="home"?resumable():null,off=batchOff(rs);
+  const ask=off?`<div class="scopeask"><b>풀던 묶음 ${rs.left}개가 남아 있어요</b><span class="note">이전 범위: ${esc(batchScope(rs))}. 이미 푼 결과는 그대로 저장돼 있어요.</span>
+      <div class="row"><button class="btn primary" data-scopenew="1">새 범위로 새로 시작</button><button class="btn" data-scopekeep="1">풀던 것 마저 하기</button></div></div>`:"";
+  b.innerHTML=`${ask}<div class="setrow"><span class="lbl">단어장</span><div class="row">${decks}</div></div>
     <div class="setrow"><span class="lbl">분야 · 여러 개 고를 수 있어요</span><div class="row"><button class="chip" data-scopeall="1" aria-pressed="${!quiz.cats.length}">전체 분야</button>${cats.map(([k,a])=>{const du=a.filter(isDue).length;return `<button class="chip" data-scopecat="${k}" aria-pressed="${quiz.cats.includes(k)}">${CATS[k]} <span class="cnt">${a.length}</span>${du?` <span class="due">복습 ${du}</span>`:""}</button>`;}).join("")}</div></div>
     <p class="note" style="margin:0">고른 범위 안에서만 오늘 학습·복습·듣기 연습이 나와요. 범위 밖 단어의 복습은 그대로 기다렸다가 범위를 넓히면 나와요.</p>
     <button class="cta" data-closescope="1"${scopeN()?"":" disabled"}><span class="cta-t">${scopeN()?`이 범위로 공부하기 · ${scopeN()}개`:"고른 범위에 단어가 없어요"}</span></button>`;
@@ -2163,6 +2175,8 @@ document.addEventListener("click",async e=>{
   if(d.closescope){$("scopeSheet").hidden=true;return;}
   if(d.scopecat){const k=d.scopecat;quiz.cats=quiz.cats.includes(k)?quiz.cats.filter(x=>x!==k):[...quiz.cats,k];saveScope();return;}
   if(d.scopeall){quiz.cats=[];saveScope();return;}
+  if(d.scopenew){clearSession();$("scopeSheet").hidden=true;renderToday();toast("풀던 묶음을 닫았어요. 지금 범위로 새로 시작해요. 푼 기록은 그대로예요.");return;}
+  if(d.scopekeep){$("scopeSheet").hidden=true;renderToday();return;}
   if(d.scopereset){quiz.deck="all";quiz.cats=[];saveScope();return;}
   if(d.themeset){applyTheme(d.themeset);settings.theme=themeMode;setMeta("settings",settings);renderSettings();return;}
   if(d.np){settings.newPerDay=+d.np;setMeta("settings",settings);renderToday();renderSettings();return;}
