@@ -1121,7 +1121,7 @@ function calendarHtml(){
 function renderToday(){
   const box=$("today");
   if(!loaded){box.innerHTML='<div class="panel"><div class="empty">단어를 불러오는 중…</div></div>';return;}
-  if(quiz.phase==="play"){quiz.doneSaved=false;saveSession();if(!quiz.histPushed&&window.top===window){try{history.pushState({jpq:1},"");quiz.histPushed=true;}catch(_){}}return renderPlay();}
+  if(quiz.phase==="play"){quiz.doneSaved=false;saveSession();pushLayer("quiz");return renderPlay();}
   if(quiz.phase==="done"){if(!quiz.doneSaved){quiz.doneSaved=true;if(quiz.items.some(q=>!itemDone(q)))saveSessionNow();else clearSession();}return renderDone();}
   const d=quiz.deck, rev=reviewList(d), nw=newList(d), flags=words.filter(w=>inDeck(w,d)&&flagOf(w)).length, leeches=words.filter(w=>inDeck(w,d)&&leechOf(w)).length;
   const total=rev.length+nw.length, size=settings.sessionSize|0||20;
@@ -1194,7 +1194,7 @@ function renderSettings(){
     </div>
     <div class="setrow"><span class="lbl">백업</span><div class="row"><button class="btn" id="bkNow2">지금 백업하기</button><span class="note">${settings.lastBackup?`마지막 백업 ${settings.lastBackup}`:"아직 백업한 적이 없어요"}</span></div></div>`;
 }
-function openSettings(){renderSettings();$("setSheet").hidden=false;$("setSheet").querySelector("[data-closeset].mini")?.focus();}
+function openSettings(){renderSettings();$("setSheet").hidden=false;pushLayer("set");$("setSheet").querySelector("[data-closeset].mini")?.focus();}
 function renderPlay(){
   const box=$("today"),q=quiz.items[quiz.i],n=quiz.items.length;
   const wp=wordProgress(quiz.items,o=>o.w.id);
@@ -2009,51 +2009,61 @@ async function deleteWord(id){
 /* ================= 화면 전환·이벤트 ================= */
 function rerender(){if(state.tab==="today")renderToday();else if(state.tab==="book")renderBook();else if(state.tab==="speak")renderSpeak();else renderManage();}
 function setTab(t){
+  const prev=state.tab;
   state.tab=t;["today","book","speak","manage"].forEach(k=>{$(k).hidden=k!==t;$("tab-"+k).setAttribute("aria-selected",k===t);});
+  if(prev==="today"&&t!=="today")pushLayer("tab");
   rerender();
 }
 ["today","book","speak","manage"].forEach(k=>$("tab-"+k).onclick=()=>{if(k==="today"&&state.tab==="today"&&quiz.phase!=="home"){leaveQuiz();return;}setTab(k);});
 /* 문제 풀다가 처음 화면으로: 푼 데까지 저장하고 오늘 화면으로. '오늘' 탭을 한 번 더 누르거나 제목을 눌러도 같음 */
-function quizHistOut(){if(quiz.histPushed){quiz.histPushed=false;try{history.back();}catch(_){}}}
+function quizHistOut(){}
 function leaveQuiz(){
-  if(quiz.phase==="done"){quiz.phase="home";quizHistOut();if(state.tab!=="today")setTab("today");else renderToday();window.scrollTo(0,0);return;}
+  if(quiz.phase==="done"){quiz.phase="home";if(state.tab!=="today")setTab("today");else renderToday();window.scrollTo(0,0);return;}
   if(quiz.phase!=="play"){if(state.tab!=="today")setTab("today");return;}
   const answered=quiz.items.some(q=>q.result!==undefined),left=quiz.items.some(q=>!itemDone(q));
   if(left)saveSessionNow();else clearSession();
-  quiz.phase="home";quiz.doneSaved=true;quizHistOut();
+  quiz.phase="home";quiz.doneSaved=true;
   if(state.tab!=="today")setTab("today");else renderToday();
   window.scrollTo(0,0);
   if(answered)toast(left?"푼 데까지 저장했어요. '이어서 풀기'로 계속할 수 있어요.":"다 풀었어요.","결과 보기",()=>{quiz.phase="done";quiz.doneSaved=false;renderToday();});
 }
 document.querySelector("h1")?.classList.add("tohome");
 document.querySelector("h1")?.addEventListener("click",()=>{if(quiz.phase!=="home")leaveQuiz();else if(state.tab!=="today")setTab("today");});
-/* 단독 실행(홈 화면 앱·브라우저)에서 휴대폰 뒤로 가기:
-   문제 중 → 처음 화면 / 열린 창(듣기 연습·설정) → 닫기 / 다른 탭 → 오늘 탭 / 오늘 처음 화면 → "종료할까요?" 확인 */
+/* 단독 실행(홈 화면 앱·브라우저)에서 휴대폰 뒤로 가기 = 한 단계씩 닫기:
+   종료 확인 창 → 듣기 연습·설정 창 → 풀던 문제 → 다른 탭 → (오늘 처음 화면) "종료할까요?"
+   휴대폰 브라우저(Chrome·삼성 인터넷)는 화면을 누르지 않고 만든 뒤로 가기 기록이나, 뒤로 가기 직후 만든 기록을 건너뛰어 버리므로
+   기록은 화면을 누를 때(무언가를 열 때)만 하나씩 만들고, 뒤로 가기를 처리할 때는 새로 만들지 않는다. */
 const exitGuardOn=window.top===window;
-/* 휴대폰 Chrome은 사용자가 화면을 한 번도 만지지 않은 상태에서 만든 뒤로 가기 기록을 건너뜀.
-   그래서 막이 기록은 첫 터치(click·keydown) 때 만들고, 그 뒤로는 바로 다시 만든다. */
-let needArm=false;
-function armExitGuard(){if(!exitGuardOn)return;needArm=true;if(navigator.userActivation&&navigator.userActivation.hasBeenActive)doArm();}
-function doArm(){if(!needArm)return;needArm=false;try{history.pushState({jpg:1},"");}catch(_){}}
-if(exitGuardOn){try{history.replaceState({jpbase:1},"");}catch(_){}armExitGuard();["click","keydown"].forEach(ev=>addEventListener(ev,doArm,true));}
+let hDepth=0,hExiting=false;
+function hPush(kind){if(!exitGuardOn)return;try{hDepth++;history.pushState({jpi:hDepth,k:kind},"");}catch(_){hDepth--;}}
+function ensureGuard(){if(exitGuardOn&&hDepth===0)hPush("guard");}
+function pushLayer(k){if(!exitGuardOn)return;ensureGuard();if((history.state||{}).k===k)return;hPush(k);}
+if(exitGuardOn){
+  try{history.replaceState({jpi:0},"");}catch(_){}
+  addEventListener("click",e=>{if(e.target.closest&&e.target.closest("#exitGo"))return;ensureGuard();},true);
+  addEventListener("keydown",ensureGuard,true);
+}
 function showExitAsk(){const el=$("exitAsk");if(!el)return;el.hidden=false;setTimeout(()=>$("exitStay")?.focus(),0);}
 addEventListener("popstate",e=>{
-  const st=e.state||{};
-  if(quiz.histPushed){quiz.histPushed=false;if(quiz.phase==="play"||quiz.phase==="done")leaveQuiz();return;}
-  if(st.jpg||!exitGuardOn)return; // 문제 화면을 닫으면서 되돌아온 경우
-  needArm=false;
-  if(!$("exitAsk").hidden){$("exitAsk").hidden=true;return;} // 확인 창에서 한 번 더 뒤로 → 그대로 나감
-  if(!$("listen").hidden){ls.view==="play"?lsStop():lsClose();armExitGuard();return;}
-  if(!$("setSheet").hidden){$("setSheet").hidden=true;armExitGuard();return;}
-  if(state.tab!=="today"){setTab("today");armExitGuard();return;}
-  if(quiz.phase!=="home"){leaveQuiz();armExitGuard();return;}
+  if(!exitGuardOn)return;
+  const st=e.state||{};hDepth=typeof st.jpi==="number"?st.jpi:0;
+  if(hExiting){hExiting=false;try{history.back();}catch(_){}return;} // 처음 기록까지 왔으면 한 번 더 뒤로 = 나가기
+  if(!$("exitAsk").hidden){$("exitAsk").hidden=true;return;}
+  if(!$("listen").hidden){lsClose();return;}
+  if(!$("setSheet").hidden){$("setSheet").hidden=true;return;}
+  if(state.tab==="today"&&quiz.phase!=="home"){leaveQuiz();return;}
+  if(state.tab!=="today"){setTab("today");return;}
   showExitAsk();
 });
 document.addEventListener("click",e=>{
   const b=e.target.closest("#exitStay,#exitGo,[data-exitbg]");if(!b)return;
   $("exitAsk").hidden=true;
-  if(b.id==="exitGo"){try{history.back();}catch(_){}setTimeout(()=>{try{window.close();}catch(_){}toast("뒤로 가기를 한 번 더 누르면 종료돼요.");},400);}
-  else{armExitGuard();doArm();}
+  if(b.id==="exitGo"){
+    const n=hDepth;
+    if(n>0){hExiting=true;try{history.go(-n);}catch(_){hExiting=false;}}else{try{history.back();}catch(_){}}
+    // 홈 화면 앱은 페이지가 스스로 닫을 수 없는 경우가 있어, 그때는 안내만
+    setTimeout(()=>{try{window.close();}catch(_){}toast("뒤로 가기를 한 번 더 누르면 종료돼요.");},700);
+  }
 },true);
 $("viewCard").onclick=()=>{state.view="card";state.flipped=false;try{localStorage.setItem("jpvocab-view","card");}catch(_){}renderBook();};
 $("cardDir").onclick=()=>{state.cardDir=state.cardDir==="ko"?"jp":"ko";state.flipped=false;renderBook();};
@@ -2499,7 +2509,7 @@ function lsFinish(){
   ls.checked=ls.flagged.slice();ls.view="done";ls.allDone=true;lsDraw();
 }
 function lsStop(){lsPause();lsWakeOff();lsLog();ls.checked=ls.flagged.slice();ls.allDone=false;ls.view="done";lsDraw();}
-function lsOpen(){ls.view="setup";$("listen").hidden=false;document.documentElement.classList.add("lsn-on");lsDraw();
+function lsOpen(){ls.view="setup";$("listen").hidden=false;pushLayer("ls");document.documentElement.classList.add("lsn-on");lsDraw();
   clearInterval(lsTick);lsTick=setInterval(()=>{if(ls.view==="play"&&ls.playing)lsDrawTop();},5000);}
 function lsClose(){if(ls.playing)lsPause();lsWakeOff();lsLog();clearInterval(lsTick);$("listen").hidden=true;document.documentElement.classList.remove("lsn-on");ls.view="setup";if(state.tab==="today")renderToday();}
 function lsSetFlag(id,on){
