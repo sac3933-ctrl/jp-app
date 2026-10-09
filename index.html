@@ -172,6 +172,7 @@ html[data-furi="tap"] ruby.on{text-decoration:none;background:var(--accent-soft)
 .qhomebtn{display:inline-flex;align-items:center;gap:5px;flex:none;font:inherit;font-size:.85rem;font-weight:600;color:var(--accent);background:var(--accent-soft);border:0;border-radius:999px;padding:8px 13px 8px 11px;cursor:pointer;min-height:36px}
 .qhomebtn:hover{filter:brightness(.97)}
 h1.tohome{cursor:pointer}
+.exit-card{text-align:center;justify-items:center}.exit-btns{display:grid;grid-template-columns:1fr 1.4fr;gap:10px;width:100%}.exit-btns .btn{padding:12px;font-size:.95rem}
 #today .qtop{position:sticky;top:0;z-index:6;background:var(--surface);padding:8px 0;margin:-8px 0 0;box-shadow:0 6px 8px -8px rgba(0,0,0,.25)}
 .qtop{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
 .qbar{height:4px;background:var(--hide);border-radius:2px;overflow:hidden}.qbar i{display:block;height:100%;background:var(--accent)}
@@ -560,6 +561,7 @@ html[data-furi] .lsn-play .lsn-hid rt,html[data-furi] .lsn-play .lsn-hid ruby rt
     </div>
   </header>
 
+  <div class="sheet" id="exitAsk" hidden><div class="sheet-bg" data-exitbg="1"></div><div class="sheet-card exit-card" role="alertdialog" aria-modal="true" aria-labelledby="exitTitle"><h2 id="exitTitle" style="margin:0">단어장을 종료할까요?</h2><p class="note" style="margin:0">공부한 기록은 이 기기에 저장되어 있어요. 풀던 문제는 다음에 '이어서 풀기'로 계속할 수 있어요.</p><div class="exit-btns"><button class="btn" id="exitGo">종료</button><button class="btn primary" id="exitStay">계속 공부하기</button></div></div></div>
   <div class="sheet" id="setSheet" hidden><div class="sheet-bg" data-closeset="1"></div><div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="setTitle"><div class="row" style="justify-content:space-between"><h2 id="setTitle" style="margin:0">설정</h2><button class="mini" data-closeset="1">닫기</button></div><div id="setBody"></div></div></div>
   <section id="today"><div class="panel"><div class="empty">단어를 불러오는 중…</div></div></section>
 
@@ -2025,8 +2027,29 @@ function leaveQuiz(){
 }
 document.querySelector("h1")?.classList.add("tohome");
 document.querySelector("h1")?.addEventListener("click",()=>{if(quiz.phase!=="home")leaveQuiz();else if(state.tab!=="today")setTab("today");});
-/* 단독 실행(홈 화면 앱)에서는 휴대폰 뒤로 가기로도 처음 화면으로 */
-addEventListener("popstate",()=>{if(quiz.histPushed){quiz.histPushed=false;if(quiz.phase==="play"||quiz.phase==="done")leaveQuiz();}});
+/* 단독 실행(홈 화면 앱·브라우저)에서 휴대폰 뒤로 가기:
+   문제 중 → 처음 화면 / 열린 창(듣기 연습·설정) → 닫기 / 다른 탭 → 오늘 탭 / 오늘 처음 화면 → "종료할까요?" 확인 */
+const exitGuardOn=window.top===window;
+function armExitGuard(){if(!exitGuardOn)return;try{history.pushState({jpg:1},"");}catch(_){}}
+if(exitGuardOn){try{history.replaceState({jpbase:1},"");}catch(_){}armExitGuard();}
+function showExitAsk(){const el=$("exitAsk");if(!el)return;el.hidden=false;setTimeout(()=>$("exitStay")?.focus(),0);}
+addEventListener("popstate",e=>{
+  const st=e.state||{};
+  if(quiz.histPushed){quiz.histPushed=false;if(quiz.phase==="play"||quiz.phase==="done")leaveQuiz();return;}
+  if(st.jpg||!exitGuardOn)return; // 문제 화면을 닫으면서 되돌아온 경우
+  if(!$("exitAsk").hidden){$("exitAsk").hidden=true;return;} // 확인 창에서 한 번 더 뒤로 → 그대로 나감
+  if(!$("listen").hidden){ls.view==="play"?lsStop():lsClose();armExitGuard();return;}
+  if(!$("setSheet").hidden){$("setSheet").hidden=true;armExitGuard();return;}
+  if(state.tab!=="today"){setTab("today");armExitGuard();return;}
+  if(quiz.phase!=="home"){leaveQuiz();armExitGuard();return;}
+  showExitAsk();
+});
+document.addEventListener("click",e=>{
+  const b=e.target.closest("#exitStay,#exitGo,[data-exitbg]");if(!b)return;
+  $("exitAsk").hidden=true;
+  if(b.id==="exitGo"){try{history.back();}catch(_){}setTimeout(()=>{try{window.close();}catch(_){}toast("뒤로 가기를 한 번 더 누르면 종료돼요.");},400);}
+  else armExitGuard();
+},true);
 $("viewCard").onclick=()=>{state.view="card";state.flipped=false;try{localStorage.setItem("jpvocab-view","card");}catch(_){}renderBook();};
 $("cardDir").onclick=()=>{state.cardDir=state.cardDir==="ko"?"jp":"ko";state.flipped=false;renderBook();};
 $("viewList").onclick=()=>{state.view="list";try{localStorage.setItem("jpvocab-view","list");}catch(_){}renderBook();};
