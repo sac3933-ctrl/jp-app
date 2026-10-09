@@ -1049,7 +1049,6 @@ function setDone(w,on,quiet){
   const upd={done:on?today():""};if(on){upd.flag=false;upd.mark="ok";}else upd.mark=lvOf(w)>=MAXLV?"ok":null;
   Object.assign(w,upd);writeWord(w.id,upd);
   if(on&&quiz.phase==="play"&&quiz.items.length){const cur=quiz.items[quiz.i];quiz.items=quiz.items.filter((x,k)=>k<=quiz.i||x.w!==w);quiz.i=quiz.items.indexOf(cur);saveSession();}
-  if(!quiet) toast(on?"암기 완료로 옮겼어요. 이제 복습에 나오지 않아요.":"다시 복습에 나오도록 되돌렸어요.",on?"되돌리기":"",on?()=>{setDone(w,false);rerender();}:null);
 }
 function knowIntro(){
   const q=quiz.items[quiz.i];if(!q||q.type!=="intro")return;
@@ -1303,6 +1302,7 @@ function renderPlay(){
   }
   if(done&&q.practice) verdict=verdict.replace(" · 다시 보기에 넣었어요","");
   const nextTxt=q.practice?"연습이라 진행도와 복습 날짜는 그대로예요":q.blocked?"오늘 틀렸던 단어라 칸은 다음에 맞혀야 올라가요":q.sameDay?"오늘 이미 한 칸 올린 단어예요":q.result?`다음 복습: ${q.nextDue===addDays(today(),1)?"내일":q.nextDue}`:"내일 다시 나와요";
+  const doneBtn=done&&okNow&&!q.practice?`<button class="mini" id="${q.w.done?"qundone":"qdone"}" aria-pressed="${!!q.w.done}" title="외운 단어는 복습에 더 나오지 않아요">${q.w.done?"✓ 암기 완료":"암기 완료"}</button>`:"";
   box.innerHTML=`<div class="panel">${head}
     <div class="qask">${Q.ask}${leechOf(q.w)?' <span class="badge">자주 틀림</span>':""}</div>
     <div class="qprompt ${Q.pcls}" ${Q.pcls==="ko"?"":'lang="ja"'}>${prompt}</div>
@@ -1310,12 +1310,11 @@ function renderPlay(){
     ${body}
     ${done?`<div class="fb"><div class="verdict ${okNow?"ok":"no"}">${verdict}</div>
       <div class="note">진행도 ${dots(q.before)} → ${dots(q.after)} · ${nextTxt}</div>
-      ${(okNow&&!leechOf(q.w)&&!q.more)?`<div class="row" style="gap:10px"><span class="word" lang="ja" style="font-size:1.3rem">${esc(q.w.w)}</span><span class="read">${esc(q.w.r)}</span>${spk(q.w.r||q.w.w,"단어")}<span class="mean">${esc(q.w.m)}</span><button class="mini" id="qmore">자세히</button></div>`
+      ${(okNow&&!leechOf(q.w)&&!q.more)?`<div class="row" style="gap:10px"><span class="word" lang="ja" style="font-size:1.3rem">${esc(q.w.w)}</span><span class="read">${esc(q.w.r)}</span>${spk(q.w.r||q.w.w,"단어")}<span class="mean">${esc(q.w.m)}</span><button class="mini" id="qmore">자세히</button>${doneBtn}</div>`
         :`${leechOf(q.w)?`<div class="leechnote">자주 틀리는 단어예요. 비슷한 말과의 차이와 예문을 한 번 더 읽어 보세요.</div>`:""}
-      <div class="row" style="gap:10px"><span class="word" lang="ja" style="font-size:1.4rem">${esc(q.w.w)}</span><span class="cat">${CATS[q.w.c]||""}</span>${jlBadge(q.w)}</div>
+      <div class="row" style="gap:10px"><span class="word" lang="ja" style="font-size:1.4rem">${esc(q.w.w)}</span><span class="cat">${CATS[q.w.c]||""}</span>${jlBadge(q.w)}${doneBtn}</div>
       ${detailHtml(q.w)}`}</div>`:""}
-    <div class="row">${quiz.i>0?'<button class="btn" id="qprev">← 이전</button>':""}${done?`<button class="btn primary" id="qnext">${quiz.i+1<n?"다음 →":"결과 보기"}</button>`:""}${done&&okNow&&!q.practice?(q.w.done?`<button class="btn" id="qundone" aria-pressed="true">✓ 암기 완료 (되돌리기)</button>`:`<button class="btn" id="qdone">암기 완료</button>`):""}</div>
-    ${done&&okNow&&!q.practice&&!q.w.done?`<p class="note" style="margin:0">확실히 외운 단어는 '암기 완료'를 누르면 앞으로 복습에 나오지 않아요. 단어장의 '암기 완료'에서 되돌릴 수 있어요.</p>`:""}</div>`;
+    <div class="row">${quiz.i>0?'<button class="btn" id="qprev">← 이전</button>':""}${done?`<button class="btn primary" id="qnext">${quiz.i+1<n?"다음 →":"결과 보기"}</button>`:""}</div></div>`;
   if(done) $("qnext")?.focus(); else if(q.type==="type"||q.type==="produce") $("typeIn")?.focus();
 }
 function renderDone(){
