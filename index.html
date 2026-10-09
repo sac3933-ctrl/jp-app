@@ -666,15 +666,16 @@ const addDays=(s,n)=>{const [y,m,d]=s.split("-").map(Number);return ymd(new Date
 /* 간격 반복: 칸이 오를수록 다음 복습까지 간격이 늘어남 */
 const MAXLV=5, INT=[0,1,3,7,14,30];
 const lvOf=w=>Math.max(0,Math.min(MAXLV,w.lv|0));
-const flagOf=w=>w.flag??(w.mark==="warn");
-const leechOf=w=>(w.miss|0)>=5&&lvOf(w)<3; // 5번 이상 틀렸고 아직 3칸 미만
-const isNew=w=>!w.seen&&!w.lastOk&&!w.first;
+const flagOf=w=>!w.done&&(w.flag??(w.mark==="warn"));
+const leechOf=w=>!w.done&&(w.miss|0)>=5&&lvOf(w)<3; // 5번 이상 틀렸고 아직 3칸 미만
+const isNew=w=>!w.done&&!w.seen&&!w.lastOk&&!w.first;
+const isDone=w=>!!w.done; // 암기 완료: 복습·새 단어·듣기에 더 이상 나오지 않음
 function dueOf(w){
   if(w.due) return w.due;
   if(w.lastOk) return addDays(w.lastOk,INT[lvOf(w)]||1);
   return isNew(w)?null:today();
 }
-const isDue=w=>!isNew(w)&&w.lastOk!==today()&&dueOf(w)<=today();
+const isDue=w=>!w.done&&!isNew(w)&&w.lastOk!==today()&&dueOf(w)<=today();
 function dots(n){return `<span class="dots" aria-label="진행도 ${n}/${MAXLV}칸">${"●".repeat(n)}<i>${"○".repeat(MAXLV-n)}</i></span>`;}
 
 /* 후리가나·발음 */
@@ -1044,6 +1045,16 @@ function introDone(){
   if(!w.first){const upd={first:today(),seen:Date.now()};Object.assign(w,upd);writeWord(w.id,upd);logEvent("new");}
   next();
 }
+function setDone(w,on,quiet){
+  const upd={done:on?today():""};if(on){upd.flag=false;upd.mark="ok";}else upd.mark=lvOf(w)>=MAXLV?"ok":null;
+  Object.assign(w,upd);writeWord(w.id,upd);
+  if(on&&quiz.phase==="play"&&quiz.items.length){const cur=quiz.items[quiz.i];quiz.items=quiz.items.filter((x,k)=>k<=quiz.i||x.w!==w);quiz.i=quiz.items.indexOf(cur);saveSession();}
+  if(!quiet) toast(on?"암기 완료로 옮겼어요. 이제 복습에 나오지 않아요.":"다시 복습에 나오도록 되돌렸어요.",on?"되돌리기":"",on?()=>{setDone(w,false);rerender();}:null);
+}
+function knowIntro(){
+  const q=quiz.items[quiz.i];if(!q||q.type!=="intro")return;
+  q.done=true;setDone(q.w,true);next();
+}
 function next(){quiz.i++;if(quiz.i>=quiz.items.length)quiz.phase="done";renderToday();window.scrollTo({top:0});}
 function srcNote(p,i){
   const x=p.src&&p.src[i];if(!x)return "";
@@ -1251,7 +1262,7 @@ function renderPlay(){
       <div class="qask">먼저 읽어 보고 넘어가세요. 3개를 읽고 나면 바로 확인 문제가 나와요.</div>
       <div class="front" style="padding-block:6px"><span class="word" lang="ja" style="font-size:2.4rem">${esc(w.w)}</span><span class="cat">${CATS[w.c]||""} ${jlBadge(w)}</span></div>
       ${detailHtml(w)}
-      <div class="row">${quiz.i>0?'<button class="btn" id="qprev">← 이전</button>':""}<button class="btn primary" id="qintro">다음 →<kbd class="kbd">Enter</kbd></button></div></div>`;
+      <div class="row">${quiz.i>0?'<button class="btn" id="qprev">← 이전</button>':""}<button class="btn primary" id="qintro">다음 →<kbd class="kbd">Enter</kbd></button><button class="btn" id="qknow">이미 알아요 · 암기 완료</button></div></div>`;
     $("qintro")?.focus();return;
   }
   const Q=QT[q.type],done=qDone(q),multi=q.parts.length>1;
@@ -1303,7 +1314,8 @@ function renderPlay(){
         :`${leechOf(q.w)?`<div class="leechnote">자주 틀리는 단어예요. 비슷한 말과의 차이와 예문을 한 번 더 읽어 보세요.</div>`:""}
       <div class="row" style="gap:10px"><span class="word" lang="ja" style="font-size:1.4rem">${esc(q.w.w)}</span><span class="cat">${CATS[q.w.c]||""}</span>${jlBadge(q.w)}</div>
       ${detailHtml(q.w)}`}</div>`:""}
-    <div class="row">${quiz.i>0?'<button class="btn" id="qprev">← 이전</button>':""}${done?`<button class="btn primary" id="qnext">${quiz.i+1<n?"다음 →":"결과 보기"}</button>`:""}</div></div>`;
+    <div class="row">${quiz.i>0?'<button class="btn" id="qprev">← 이전</button>':""}${done?`<button class="btn primary" id="qnext">${quiz.i+1<n?"다음 →":"결과 보기"}</button>`:""}${done&&okNow&&!q.practice?(q.w.done?`<button class="btn" id="qundone" aria-pressed="true">✓ 암기 완료 (되돌리기)</button>`:`<button class="btn" id="qdone">암기 완료</button>`):""}</div>
+    ${done&&okNow&&!q.practice&&!q.w.done?`<p class="note" style="margin:0">확실히 외운 단어는 '암기 완료'를 누르면 앞으로 복습에 나오지 않아요. 단어장의 '암기 완료'에서 되돌릴 수 있어요.</p>`:""}</div>`;
   if(done) $("qnext")?.focus(); else if(q.type==="type"||q.type==="produce") $("typeIn")?.focus();
 }
 function renderDone(){
@@ -1326,12 +1338,13 @@ function bookList(){
   else if(state.filter==="weak") list=list.filter(w=>!isNew(w)&&lvOf(w)<=1);
   else if(state.filter==="unseen") list=list.filter(isNew);
   else if(state.filter==="master") list=list.filter(w=>lvOf(w)>=MAXLV);
+  else if(state.filter==="done") list=list.filter(isDone);
   if(state.filter==="recent") list.sort((a,b)=>(b.n||0)-(a.n||0));
   else if(state.shuffled){const pos=new Map(state.shuffled.map((id,i)=>[id,i]));list.sort((a,b)=>(pos.get(a.id)??1e9)-(pos.get(b.id)??1e9));}
   else list.sort(byOrder);
   return list;
 }
-const FILTERS={all:"전체",flag:"다시 보기",weak:"진행도 낮은 것",unseen:"안 배운 것",master:"다 외운 것",recent:"최근 추가"};
+const FILTERS={all:"전체",flag:"다시 보기",weak:"진행도 낮은 것",unseen:"안 배운 것",master:"다 외운 것",done:"암기 완료",recent:"최근 추가"};
 function renderFilters(){
   const cats=Object.entries(CATS).filter(([k])=>words.some(w=>w.c===k&&inDeck(w,state.deck)));
   $("filters").innerHTML=`
@@ -1361,8 +1374,8 @@ function renderBook(){
     if(state.idx>=list.length) state.idx=list.length-1; if(state.idx<0) state.idx=0;
     const w=list[state.idx],f=flagOf(w);rememberCard(w.id);
     $("bookBody").innerHTML=`<article class="card${w.chk===false?" unchk":""}">
-      <div class="cardtop"><span class="cat">${DECKS[deckOf(w)]} · ${CATS[w.c]||""} ${jlBadge(w)}</span><span class="row">${dots(lvOf(w))}<button class="mini" data-flag="${w.id}" aria-pressed="${f}">${f?"다시 보기 중":"다시 보기"}</button></span></div>
-      <div class="front">${state.cardDir==="ko"&&!state.flipped?`<span class="mean" style="font-size:1.7rem">${esc(w.m)}</span>`:`<span class="word" lang="ja">${esc(w.w)}</span>`}${state.flipped?"":`<span class="note">${isNew(w)?"아직 안 배운 단어":`다음 복습 ${dueOf(w)<=today()?"오늘":dueOf(w)}`}${leechOf(w)?" · 자주 틀림":""}</span>`}</div>
+      <div class="cardtop"><span class="cat">${DECKS[deckOf(w)]} · ${CATS[w.c]||""} ${jlBadge(w)}</span><span class="row">${dots(lvOf(w))}<button class="mini" data-flag="${w.id}" aria-pressed="${f}">${f?"다시 보기 중":"다시 보기"}</button><button class="mini" data-done="${w.id}" aria-pressed="${!!w.done}">${w.done?"✓ 암기 완료":"암기 완료"}</button></span></div>
+      <div class="front">${state.cardDir==="ko"&&!state.flipped?`<span class="mean" style="font-size:1.7rem">${esc(w.m)}</span>`:`<span class="word" lang="ja">${esc(w.w)}</span>`}${state.flipped?"":`<span class="note">${w.done?"암기 완료 · 복습에 나오지 않아요":isNew(w)?"아직 안 배운 단어":`다음 복습 ${dueOf(w)<=today()?"오늘":dueOf(w)}`}${leechOf(w)?" · 자주 틀림":""}</span>`}</div>
       ${state.flipped?detailHtml(w):`<button class="flip" id="flip">${state.cardDir==="ko"?"일본어 보기":"뜻 보기"} (Space)</button>`}
     </article>
     <div class="nav"><button class="btn" id="prevCard" ${state.idx===0?"disabled":""}>← 이전</button><span class="note">${state.idx+1} / ${list.length}${state.idx>0?` <button class="mini" id="firstCard">처음으로</button>`:""}</span><button class="btn primary" id="nextCard" ${state.idx>=list.length-1?"disabled":""}>다음 →</button></div>`;
@@ -1370,7 +1383,7 @@ function renderBook(){
     const shown=list.slice(0,state.listMax||80);
     $("bookBody").innerHTML=`<div class="list">${shown.map(w=>{const open=state.open===w.id;return `<div class="lrow">
       <button data-open="${w.id}" aria-expanded="${open}"><span class="meta"><span class="w" lang="ja">${esc(w.w)}</span><span class="read">${esc(w.r)}</span> · ${esc(w.m)}</span><span class="row">${jlBadge(w)}${leechOf(w)?'<span class="badge">자주 틀림</span>':""}${flagOf(w)?'<span class="flagdot">다시 보기</span>':""}${dots(lvOf(w))}</span></button>
-      ${open?detailHtml(w,{head:false}).replace('<div class="detail">','<div class="detail"><div class="row">'+spk(w.r||w.w,"단어")+`<button class="mini" data-flag="${w.id}" aria-pressed="${flagOf(w)}">${flagOf(w)?"다시 보기 중":"다시 보기"}</button></div>`):""}
+      ${open?detailHtml(w,{head:false}).replace('<div class="detail">','<div class="detail"><div class="row">'+spk(w.r||w.w,"단어")+`<button class="mini" data-flag="${w.id}" aria-pressed="${flagOf(w)}">${flagOf(w)?"다시 보기 중":"다시 보기"}</button><button class="mini" data-done="${w.id}" aria-pressed="${!!w.done}">${w.done?"✓ 암기 완료":"암기 완료"}</button></div>`):""}
     </div>`;}).join("")}</div>${list.length>shown.length?`<div class="row" style="justify-content:center;margin-top:10px"><button class="btn" id="more">더 보기 (${list.length-shown.length}개 더)</button></div>`:""}`;
   }
 }
@@ -1994,7 +2007,7 @@ async function genExamples(id,btn){
 }
 
 /* 백업·복원 */
-const FIELDS=["w","r","m","kr","c","deck","jl","col","cr","cm","ja","jr","ko","exs","note","g","chk","flag","mark","lv","due","lastOk","first","seen","n"];
+const FIELDS=["w","r","m","kr","c","deck","jl","col","cr","cm","ja","jr","ko","exs","note","g","chk","flag","mark","lv","due","lastOk","first","seen","n","done"];
 function backupData(kind){
   const list=words.slice().sort(byOrder);
   if(kind==="json") return JSON.stringify({app:"업무 일본어 단어장",version:2,exported:new Date().toISOString(),count:list.length,
@@ -2189,6 +2202,9 @@ document.addEventListener("click",async e=>{
   if(t.id==="qstop"){leaveQuiz();return;}
   if(t.id==="qhome"){quiz.phase="home";quizHistOut();renderToday();window.scrollTo(0,0);return;}
   if(t.id==="qintro"){introDone();return;}
+  if(t.id==="qknow"){knowIntro();return;}
+  if(t.id==="qdone"||t.id==="qundone"){const q=quiz.items[quiz.i];if(q){setDone(q.w,t.id==="qdone");renderToday();}return;}
+  if(d.done){const w=words.find(x=>x.id===d.done);if(w){setDone(w,!w.done);rerender();}return;}
   if(t.id==="qnext"){next();return;}
   if(t.id==="qprev"){if(quiz.phase==="done"){quiz.phase="play";quiz.i=quiz.items.length-1;}else if(quiz.i>0)quiz.i--;renderToday();return;}
   if(t.id==="qreveal"){quiz.items[quiz.i].revealed=true;renderToday();$("qgood")?.focus();return;}
@@ -2440,7 +2456,7 @@ const lsKoSec=s=>(.5+String(s||"").length*.14)/lsOpt.rate;
 const lsRead=w=>wordTts(w);
 const lsMean=w=>String(w.m||"").replace(/\s*[(（][^)）]*[)）]/g,"").trim()||String(w.m||"");
 function lsPool(src){
-  const D=quiz.deck,inD=words.filter(w=>inScope(w,D)),L=inD.filter(w=>!isNew(w)),wk=addDays(today(),-6);
+  const D=quiz.deck,inD=words.filter(w=>inScope(w,D)),L=inD.filter(w=>!isNew(w)&&!w.done),wk=addDays(today(),-6);
   const due=reviewList(D),flag=inD.filter(flagOf),leech=inD.filter(leechOf);
   const recent=L.filter(w=>(w.first||"")>=wk).sort((a,b)=>String(b.first).localeCompare(String(a.first)));
   if(src==="due")return due;if(src==="flag")return flag;if(src==="leech")return leech;if(src==="recent")return recent;
