@@ -289,6 +289,12 @@ textarea{min-height:76px;font-family:var(--f-jp);resize:vertical}
 .iconbtn:disabled{opacity:.35;cursor:default}
 .hero2{display:grid;gap:14px}
 .deckflag{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:.85rem;padding:8px 12px;border-radius:10px;background:var(--accent-soft);color:var(--accent);font-weight:600}
+.scopebar{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;width:100%;box-sizing:border-box;text-align:left;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);cursor:pointer}
+.scope-l{font-size:.72rem;color:var(--muted);letter-spacing:.04em;white-space:nowrap}
+.scope-v{font-size:.92rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.scope-v b{color:var(--accent);font-weight:600;font-size:.82rem;margin-left:2px}
+.scope-c{font-size:.82rem;color:var(--accent);white-space:nowrap}
+.chip .cnt{opacity:.7;font-size:.9em}.chip .due{font-size:.8em;color:var(--warn)}.chip[aria-pressed="true"] .due{color:inherit;opacity:.85}
+#scopeSheet .chip{padding:8px 12px}
 .hero-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .hero-top .streak{font-size:.82rem;font-weight:700;color:var(--ok);background:var(--ok-soft);padding:3px 10px;border-radius:999px}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
@@ -561,6 +567,7 @@ html[data-furi] .lsn-play .lsn-hid rt,html[data-furi] .lsn-play .lsn-hid ruby rt
     </div>
   </header>
 
+  <div class="sheet" id="scopeSheet" hidden><div class="sheet-bg" data-closescope="1"></div><div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="scopeTitle"><div class="row" style="justify-content:space-between"><h2 id="scopeTitle" style="margin:0">공부 범위</h2><button class="mini" data-closescope="1">닫기</button></div><div id="scopeBody" style="display:grid;gap:14px"></div></div></div>
   <div class="sheet" id="exitAsk" hidden><div class="sheet-bg" data-exitbg="1"></div><div class="sheet-card exit-card" role="alertdialog" aria-modal="true" aria-labelledby="exitTitle"><h2 id="exitTitle" style="margin:0">단어장을 종료할까요?</h2><p class="note" style="margin:0">공부한 기록은 이 기기에 저장되어 있어요. 풀던 문제는 다음에 '이어서 풀기'로 계속할 수 있어요.</p><div class="exit-btns"><button class="btn" id="exitGo">종료</button><button class="btn primary" id="exitStay">계속 공부하기</button></div></div></div>
   <div class="sheet" id="setSheet" hidden><div class="sheet-bg" data-closeset="1"></div><div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="setTitle"><div class="row" style="justify-content:space-between"><h2 id="setTitle" style="margin:0">설정</h2><button class="mini" data-closeset="1">닫기</button></div><div id="setBody"></div></div></div>
   <section id="today"><div class="panel"><div class="empty">단어를 불러오는 중…</div></div></section>
@@ -635,6 +642,12 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const deckOf=w=>w.deck==="daily"?"daily":"work";
 const inDeck=(w,d)=>d==="all"||deckOf(w)===d;
+/* 공부 범위: 단어장(전체·업무·일상) + 분야(여러 개). 오늘 학습·복습·듣기·말하기 재료에 적용 */
+const inScope=(w,d)=>inDeck(w,d)&&(!quiz.cats.length||quiz.cats.includes(w.c||"gen"));
+function scopeLabel(){const d=quiz.deck,c=quiz.cats,dk=d==="all"?"":DECKS[d];
+  if(!c.length)return d==="all"?"전체":dk+" 단어장";
+  const cs=c.length<=2?c.map(k=>CATS[k]).join(", "):`${CATS[c[0]]} 외 ${c.length-1}개 분야`;return dk?dk+" · "+cs:cs;}
+const scopeN=()=>words.filter(w=>inScope(w,quiz.deck)).length;
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 
@@ -792,12 +805,12 @@ function toast(msg,actLabel,act){
 /* ================= 오늘 할 일 ================= */
 const byOrder=(a,b)=>(a.n||0)-(b.n||0);
 function reviewList(deck){
-  return words.filter(w=>inDeck(w,deck)&&isDue(w)).sort((a,b)=>(flagOf(b)-flagOf(a))||(dueOf(a)<dueOf(b)?-1:dueOf(a)>dueOf(b)?1:0)||(lvOf(a)-lvOf(b)));
+  return words.filter(w=>inScope(w,deck)&&isDue(w)).sort((a,b)=>(flagOf(b)-flagOf(a))||(dueOf(a)<dueOf(b)?-1:dueOf(a)>dueOf(b)?1:0)||(lvOf(a)-lvOf(b)));
 }
 const newToday=()=>words.filter(w=>w.first===today()).length;
 function newList(deck){
   const room=Math.max(0,(settings.newPerDay|0)-newToday());
-  return words.filter(w=>inDeck(w,deck)&&isNew(w)).sort(byOrder).slice(0,room);
+  return words.filter(w=>inScope(w,deck)&&isNew(w)).sort(byOrder).slice(0,room);
 }
 function streakNow(){
   if(stats.lastDay===today()||stats.lastDay===addDays(today(),-1)) return stats.streak|0;
@@ -846,7 +859,7 @@ function bumpStats(ok,id){
 }
 
 /* ================= 문제 ================= */
-const quiz={phase:"home",deck:"all",items:[],i:0,mode:"today"};
+const quiz={phase:"home",deck:"all",cats:[],items:[],i:0,mode:"today"};
 const hasKanji=w=>/[㐀-鿿]/.test(w.w)&&w.r&&w.r!==w.w;
 const ANS={read:w=>w.r,mean:w=>w.m,word:w=>w.w};
 const PART_LABEL={read:"읽기 (히라가나)",mean:"뜻 (한국어)",word:"일본어"};
@@ -910,19 +923,19 @@ function makeQuestion(w){
   q.parts=QT[type].parts.map(k=>makePart(w,k,type==="blank"||type==="col"));
   return q;
 }
-const studiedToday=d=>{const t=today();return words.filter(w=>inDeck(w,d)&&(w.lastOk===t||w.lastMiss===t||w.first===t));};
+const studiedToday=d=>{const t=today();return words.filter(w=>inScope(w,d)&&(w.lastOk===t||w.lastMiss===t||w.first===t));};
 function startSession(mode){
   const deck=quiz.deck,size=settings.sessionSize|0||20;
   let items=[];
   if(mode==="leech"){
-    items=shuffle(words.filter(w=>inDeck(w,deck)&&leechOf(w))).slice(0,size).map(makeQuestion);
+    items=shuffle(words.filter(w=>inScope(w,deck)&&leechOf(w))).slice(0,size).map(makeQuestion);
   }else if(mode==="list"){
     const set=new Set(quiz.listIds||[]);
     items=shuffle(words.filter(w=>set.has(w.id))).slice(0,size).map(makeQuestion);
   }else if(mode==="practice"){
     items=shuffle(studiedToday(deck)).map(w=>{const q=makeQuestion(w);q.kind="practice";return q;});
   }else if(mode==="flag"){
-    items=shuffle(words.filter(w=>inDeck(w,deck)&&flagOf(w))).slice(0,size).map(makeQuestion);
+    items=shuffle(words.filter(w=>inScope(w,deck)&&flagOf(w))).slice(0,size).map(makeQuestion);
   }else{
     const rev=reviewList(deck).slice(0,size);
     const nw=newList(deck).slice(0,Math.max(0,size-rev.length));
@@ -1058,7 +1071,7 @@ function detailHtml(w,opt={}){
 
 /* ================= 학습 달력 ================= */
 function progressHtml(){
-  const d=quiz.deck,list=words.filter(w=>inDeck(w,d)),unseen=list.filter(isNew).length;
+  const d=quiz.deck,list=words.filter(w=>inScope(w,d)),unseen=list.filter(isNew).length;
   const dist=[0,1,2,3,4,5].map(n=>list.filter(w=>!isNew(w)&&lvOf(w)===n).length),tot=Math.max(1,list.length);
   const seg=[["안 배움",unseen,"pu"],...dist.map((n,i)=>[i+"칸",n,"p"+i])];
   return `<div class="prog"><div class="progbar">${seg.filter(x=>x[1]).map(([l,n,c])=>`<i class="${c}" style="width:${n/tot*100}%" title="${l} ${n}개"></i>`).join("")}</div>
@@ -1123,25 +1136,25 @@ function renderToday(){
   if(!loaded){box.innerHTML='<div class="panel"><div class="empty">단어를 불러오는 중…</div></div>';return;}
   if(quiz.phase==="play"){quiz.doneSaved=false;saveSession();pushLayer("quiz");return renderPlay();}
   if(quiz.phase==="done"){if(!quiz.doneSaved){quiz.doneSaved=true;if(quiz.items.some(q=>!itemDone(q)))saveSessionNow();else clearSession();}return renderDone();}
-  const d=quiz.deck, rev=reviewList(d), nw=newList(d), flags=words.filter(w=>inDeck(w,d)&&flagOf(w)).length, leeches=words.filter(w=>inDeck(w,d)&&leechOf(w)).length;
+  const d=quiz.deck, rev=reviewList(d), nw=newList(d), flags=words.filter(w=>inScope(w,d)&&flagOf(w)).length, leeches=words.filter(w=>inScope(w,d)&&leechOf(w)).length;
   const total=rev.length+nw.length, size=settings.sessionSize|0||20;
   const remainIds=new Set([...rev,...nw].map(w=>w.id)),t0=today();
-  const doneN=words.filter(w=>inDeck(w,d)&&!remainIds.has(w.id)&&(w.lastOk===t0||w.lastMiss===t0)).length;
+  const doneN=words.filter(w=>inScope(w,d)&&!remainIds.has(w.id)&&(w.lastOk===t0||w.lastMiss===t0)).length;
   const planN=doneN+total,pct=planN?Math.round(doneN/planN*100):0;
-  const tom=words.filter(w=>inDeck(w,d)&&!isNew(w)&&dueOf(w)===addDays(today(),1)).length;
-  const week=words.filter(w=>inDeck(w,d)&&!isNew(w)&&dueOf(w)>today()&&dueOf(w)<=addDays(today(),7)).length;
+  const tom=words.filter(w=>inScope(w,d)&&!isNew(w)&&dueOf(w)===addDays(today(),1)).length;
+  const week=words.filter(w=>inScope(w,d)&&!isNew(w)&&dueOf(w)>today()&&dueOf(w)<=addDays(today(),7)).length;
   const dd=new Date(), wk="일월화수목금토"[dd.getDay()];
   const st=streakNow(), doneToday=(dayLog(today())||{}).q||0;
   const lb=settings.lastBackup, bkDays=lb?Math.round((Date.parse(today())-Date.parse(lb))/864e5):null;
   const bkWarn=words.length&&(bkDays===null||bkDays>=30);
-  const deckN=words.filter(w=>inDeck(w,d)).length;
+  const deckN=words.filter(w=>inScope(w,d)).length;
   const rs=resumable();
-  const seg=d==="all"||!deckN?"":`<div class="deckflag"><span>${DECKS[d]} 단어만 공부하는 중</span><button class="link" data-qd="all">전체로 바꾸기</button></div>`;
+  const seg=`<button class="scopebar" id="openScope" aria-haspopup="dialog"><span class="scope-l">공부 범위</span><span class="scope-v">${esc(scopeLabel())} <b>${deckN}개</b></span><span class="scope-c" aria-hidden="true">바꾸기 ›</span></button>`;
   let main;
   if(!deckN){
-    main=`<div class="hero-msg"><b>${DECKS[d]} 단어장에 아직 단어가 없어요</b><span class="note">단어를 추가하거나 전체 단어장으로 바꿔 보세요.</span></div>
+    main=`<div class="hero-msg"><b>'${esc(scopeLabel())}' 범위에 아직 단어가 없어요</b><span class="note">단어를 추가하거나 공부 범위를 넓혀 보세요.</span></div>
       <button class="cta" id="goAdd"><span class="cta-t">${DECKS[d]} 단어 추가하기</span></button>
-      <div class="cta-sub"><button class="link" data-qd="all">전체 단어장으로 보기</button></div>`;
+      <div class="cta-sub"><button class="link" data-scopereset="1">전체 범위로 보기</button></div>`;
   }else{
     const prog=total||doneN?`<div class="prog2"><div class="prog2-n"><b>${doneN}</b><span>/ ${planN}개 완료</span></div><span class="prog2-p">${pct}%</span></div>
       <div class="tbar" role="progressbar" aria-label="오늘 진행률" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div>`:"";
@@ -1178,7 +1191,8 @@ function renderToday(){
 }
 function renderSettings(){
   const b=$("setBody");if(!b)return;
-  b.innerHTML=`<div class="setrow"><span class="lbl">오늘 학습에 넣을 단어장</span><div class="row">${[["all","전체"],["work","업무만"],["daily","일상만"]].map(([k,v])=>`<button class="chip" data-qd="${k}" aria-pressed="${quiz.deck===k}">${v}${k==="all"?"":` (${words.filter(w=>deckOf(w)===k).length})`}</button>`).join("")}</div></div>
+  b.innerHTML=`<div class="setrow"><span class="lbl">공부 범위</span><div class="row"><span>${esc(scopeLabel())} (${scopeN()}개)</span><button class="btn" id="openScope2">바꾸기</button></div><span class="note">오늘 화면 맨 위 '공부 범위'를 눌러도 바꿀 수 있어요.</span></div>
+    <div class="setrow"><span class="lbl">화면 테마</span><div class="row">${[["auto","기기 설정 따라"],["light","밝게"],["dark","어둡게"]].map(([k,v])=>`<button class="chip" data-themeset="${k}" aria-pressed="${themeMode===k}">${v}</button>`).join("")}</div></div>
     <div class="setrow"><span class="lbl">후리가나 (읽기 표시)</span><div class="row">${Object.entries(FURI).map(([k,v])=>`<button class="chip" data-furiset="${k}" aria-pressed="${furiMode===k}">${v}</button>`).join("")}</div><span class="note">눌러서 보기: 한자를 누르면 그 단어 읽기만 보여요. 한자 외울 때 좋아요.</span></div>
     <div class="setrow"><span class="lbl">하루 새 단어</span><div class="row">${[5,10,20,30].map(n=>`<button class="chip" data-np="${n}" aria-pressed="${settings.newPerDay===n}">${n}개</button>`).join("")}</div></div>
     <div class="setrow"><span class="lbl">한 번에 풀 단어</span><div class="row">${[10,20,30].map(n=>`<button class="chip" data-ss="${n}" aria-pressed="${settings.sessionSize===n}">${n}개</button>`).join("")}</div></div>
@@ -1194,6 +1208,21 @@ function renderSettings(){
     </div>
     <div class="setrow"><span class="lbl">백업</span><div class="row"><button class="btn" id="bkNow2">지금 백업하기</button><span class="note">${settings.lastBackup?`마지막 백업 ${settings.lastBackup}`:"아직 백업한 적이 없어요"}</span></div></div>`;
 }
+function renderScope(){
+  const b=$("scopeBody");if(!b)return;const d=quiz.deck;
+  const decks=[["all","전체"],["work","업무"],["daily","일상"]].map(([k,v])=>{const n=words.filter(w=>inDeck(w,k)).length;return `<button class="chip" data-qd="${k}" aria-pressed="${d===k}"${n?"":" disabled"}>${v} <span class="cnt">${n}</span></button>`;}).join("");
+  const cats=Object.keys(CATS).map(k=>[k,words.filter(w=>inDeck(w,d)&&(w.c||"gen")===k)]).filter(([,a])=>a.length);
+  b.innerHTML=`<div class="setrow"><span class="lbl">단어장</span><div class="row">${decks}</div></div>
+    <div class="setrow"><span class="lbl">분야 · 여러 개 고를 수 있어요</span><div class="row"><button class="chip" data-scopeall="1" aria-pressed="${!quiz.cats.length}">전체 분야</button>${cats.map(([k,a])=>{const du=a.filter(isDue).length;return `<button class="chip" data-scopecat="${k}" aria-pressed="${quiz.cats.includes(k)}">${CATS[k]} <span class="cnt">${a.length}</span>${du?` <span class="due">복습 ${du}</span>`:""}</button>`;}).join("")}</div></div>
+    <p class="note" style="margin:0">고른 범위 안에서만 오늘 학습·복습·듣기 연습이 나와요. 범위 밖 단어의 복습은 그대로 기다렸다가 범위를 넓히면 나와요.</p>
+    <button class="cta" data-closescope="1"${scopeN()?"":" disabled"}><span class="cta-t">${scopeN()?`이 범위로 공부하기 · ${scopeN()}개`:"고른 범위에 단어가 없어요"}</span></button>`;
+}
+function openScope(){renderScope();$("scopeSheet").hidden=false;pushLayer("scope");}
+function saveScope(){settings.deck=quiz.deck;settings.cats=quiz.cats.slice();setMeta("settings",settings);renderScope();renderSettings();if(state.tab==="today"&&quiz.phase==="home")renderToday();}
+/* 화면 테마: 기기 설정 따라 / 밝게 / 어둡게 (기기마다 저장, 다른 기기와도 맞춤) */
+let themeMode="auto";
+function applyTheme(m){themeMode=["light","dark"].includes(m)?m:"auto";if(themeMode==="auto")delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=themeMode;try{localStorage.setItem("jpvocab-theme",themeMode);}catch(_){}}
+try{applyTheme(localStorage.getItem("jpvocab-theme")||"auto");}catch(_){}
 function openSettings(){renderSettings();$("setSheet").hidden=false;pushLayer("set");$("setSheet").querySelector("[data-closeset].mini")?.focus();}
 function renderPlay(){
   const box=$("today"),q=quiz.items[quiz.i],n=quiz.items.length;
@@ -1358,7 +1387,7 @@ function simRatio(a,b){
 }
 function matchPct(heard,src){const h=normSp(heard);return Math.round(100*Math.max(simRatio(h,normSp(src)),simRatio(h,normSp(kanaOf(src)))));}
 function spPool(){
-  const d=quiz.deck,base=words.filter(w=>inDeck(w,d)&&examples(w).length);
+  const d=quiz.deck,base=words.filter(w=>inScope(w,d)&&examples(w).length);
   const studied=base.filter(w=>!isNew(w));
   const pool=studied.length>=5?studied:base;
   // 다시 보기·진행도 낮은 단어를 조금 더 자주
@@ -1555,7 +1584,7 @@ Object.assign(sp,{dv:"list",dcur:null,dscene:"",dsrc:"today",dwords:null,dbusy:f
 const dlgDeck=()=>sp.dscope||(quiz.deck==="daily"?"daily":"work");
 function dlgPickWords(){
   if(sp.dwords&&sp.dwords.length) return sp.dwords.map(id=>words.find(w=>w.id===id)).filter(Boolean).slice(0,4);
-  const d=quiz.deck,t=today(),base=words.filter(w=>inDeck(w,d)&&!/^[～~]/.test(w.w));
+  const d=quiz.deck,t=today(),base=words.filter(w=>inScope(w,d)&&!/^[～~]/.test(w.w));
   let pool=sp.dsrc==="today"?base.filter(w=>w.lastOk===t||w.lastMiss===t||w.first===t):sp.dsrc==="flag"?base.filter(flagOf):base.filter(w=>!isNew(w));
   if(pool.length<2) pool=base.filter(w=>!isNew(w)).length>=2?base.filter(w=>!isNew(w)):base;
   return shuffle(pool).slice(0,3);
@@ -2051,6 +2080,7 @@ addEventListener("popstate",e=>{
   if(!$("exitAsk").hidden){$("exitAsk").hidden=true;return;}
   if(!$("listen").hidden){lsClose();return;}
   if(!$("setSheet").hidden){$("setSheet").hidden=true;return;}
+  if(!$("scopeSheet").hidden){$("scopeSheet").hidden=true;return;}
   if(state.tab==="today"&&quiz.phase!=="home"){leaveQuiz();return;}
   if(state.tab!=="today"){setTab("today");return;}
   showExitAsk();
@@ -2127,7 +2157,14 @@ document.addEventListener("click",async e=>{
   if(d.calm){const [yy,mm]=(state.calMonth||today().slice(0,7)).split("-").map(Number);const nd=new Date(yy,mm-1+(+d.calm),1);state.calMonth=`${nd.getFullYear()}-${String(nd.getMonth()+1).padStart(2,"0")}`;state.calDay=null;renderToday();return;}
   if(t.id==="goLeech"){startSession("leech");return;}
   if(t.id==="goAdd"){const dk=quiz.deck==="daily"?"daily":"work";setTab("manage");document.querySelector(`[data-ad="${dk}"]`)?.click();$("newWords").focus();return;}
-  if(d.qd){quiz.deck=d.qd;settings.deck=d.qd;setMeta("settings",settings);renderToday();renderSettings();return;}
+  if(d.qd){quiz.deck=d.qd;quiz.cats=quiz.cats.filter(k=>words.some(w=>w.c===k&&inDeck(w,d.qd)));saveScope();return;}
+  if(t.id==="openScope"){openScope();return;}
+  if(t.id==="openScope2"){$("setSheet").hidden=true;openScope();return;}
+  if(d.closescope){$("scopeSheet").hidden=true;return;}
+  if(d.scopecat){const k=d.scopecat;quiz.cats=quiz.cats.includes(k)?quiz.cats.filter(x=>x!==k):[...quiz.cats,k];saveScope();return;}
+  if(d.scopeall){quiz.cats=[];saveScope();return;}
+  if(d.scopereset){quiz.deck="all";quiz.cats=[];saveScope();return;}
+  if(d.themeset){applyTheme(d.themeset);settings.theme=themeMode;setMeta("settings",settings);renderSettings();return;}
   if(d.np){settings.newPerDay=+d.np;setMeta("settings",settings);renderToday();renderSettings();return;}
   if(d.ss){settings.sessionSize=+d.ss;setMeta("settings",settings);renderToday();renderSettings();return;}
   if(t.id==="goResume"){resumeSession();return;}
@@ -2193,6 +2230,7 @@ document.addEventListener("keydown",e=>{
     return;
   }
   if(e.key==="Escape"&&!$("setSheet").hidden){$("setSheet").hidden=true;return;}
+  if(e.key==="Escape"&&!$("scopeSheet").hidden){$("scopeSheet").hidden=true;return;}
   if(e.key==="Escape"&&state.tab==="today"&&quiz.phase!=="home"){e.preventDefault();leaveQuiz();return;}
   if(state.tab==="today"&&quiz.phase==="play"){
     const q=quiz.items[quiz.i];if(!q)return;
@@ -2247,7 +2285,7 @@ function shResolve(sid){
 }
 function shUsed(){const u=shSkip();Object.values(shMeta.sets||{}).forEach(s=>(s.sids||[]).forEach(x=>u.add(x)));return u;}
 function shSentPool(exprOnly,withExpr){
-  const D=quiz.deck,inD=words.filter(w=>inDeck(w,D));
+  const D=quiz.deck,inD=words.filter(w=>inScope(w,D));
   const base=exprOnly?inD.filter(isExpr):withExpr?[...inD.filter(isExpr),...inD.filter(w=>!isNew(w)&&!isExpr(w))]:inD.filter(w=>!isNew(w)&&!isExpr(w));
   const order=exprOnly?base:[...(withExpr?base.filter(isExpr):[]),...reviewList(D),...base.filter(flagOf),...base.filter(w=>(w.first||"")>=addDays(today(),-6)),...base.slice().sort((a,b)=>lvOf(a)-lvOf(b))];
   const seen=new Set(),used=shUsed(),out=[];
@@ -2386,7 +2424,7 @@ const lsKoSec=s=>(.5+String(s||"").length*.14)/lsOpt.rate;
 const lsRead=w=>wordTts(w);
 const lsMean=w=>String(w.m||"").replace(/\s*[(（][^)）]*[)）]/g,"").trim()||String(w.m||"");
 function lsPool(src){
-  const D=quiz.deck,inD=words.filter(w=>inDeck(w,D)),L=inD.filter(w=>!isNew(w)),wk=addDays(today(),-6);
+  const D=quiz.deck,inD=words.filter(w=>inScope(w,D)),L=inD.filter(w=>!isNew(w)),wk=addDays(today(),-6);
   const due=reviewList(D),flag=inD.filter(flagOf),leech=inD.filter(leechOf);
   const recent=L.filter(w=>(w.first||"")>=wk).sort((a,b)=>String(b.first).localeCompare(String(a.first)));
   if(src==="due")return due;if(src==="flag")return flag;if(src==="leech")return leech;if(src==="recent")return recent;
@@ -2424,7 +2462,7 @@ function lsBuild(){
     return q;
   }
   let pool=lsPool(lsOpt.src);
-  if(!pool.length&&lsOpt.src==="auto"){pool=words.filter(w=>inDeck(w,quiz.deck)).sort(byOrder);if(pool.length)ls.note="아직 공부한 단어가 없어서 단어장 앞쪽 단어부터 들려줘요.";}
+  if(!pool.length&&lsOpt.src==="auto"){pool=words.filter(w=>inScope(w,quiz.deck)).sort(byOrder);if(pool.length)ls.note="아직 공부한 단어가 없어서 단어장 앞쪽 단어부터 들려줘요.";}
   let n=0;
   for(let r=0;r<3&&pool.length&&t<goal;r++){
     for(const w of r?shuffle(pool):pool){
@@ -2684,7 +2722,7 @@ applyFuri();
   document.documentElement.classList.toggle("nokey",!sample);
   if(!sample){$("autofill").hidden=true;}
   col=db.collection("words");
-  db.doc("meta/settings").onSnapshot(s=>{if(s.exists){const v=plain(s.data());settings={...settings,...v};if(v.furi&&FURI[v.furi]&&v.furi!==furiMode){furiMode=v.furi;applyFuri();}if(v.deck&&DECKS[v.deck])quiz.deck=v.deck;if(v.listen)lsOpt={...LS_DEF,...v.listen};}if(loaded&&quiz.phase==="home")renderToday();},()=>{});
+  db.doc("meta/settings").onSnapshot(s=>{if(s.exists){const v=plain(s.data());settings={...settings,...v};if(v.furi&&FURI[v.furi]&&v.furi!==furiMode){furiMode=v.furi;applyFuri();}if(v.deck&&DECKS[v.deck])quiz.deck=v.deck;if(Array.isArray(v.cats))quiz.cats=v.cats.filter(k=>CATS[k]);if(v.theme&&v.theme!==themeMode)applyTheme(v.theme);if(v.listen)lsOpt={...LS_DEF,...v.listen};}if(loaded&&quiz.phase==="home")renderToday();},()=>{});
   db.collection("log").onSnapshot(s=>{s.docs.forEach(d=>{logChecked[d.id]=true;if(!logBusy[d.id])logs[d.id]=plain(d.data());});if(loaded&&quiz.phase==="home")renderToday();},()=>{});
   db.doc("meta/stats").onSnapshot(s=>{if(s.exists&&!metaBusy.stats)stats={...stats,...plain(s.data())};if(loaded&&quiz.phase==="home")renderToday();},()=>{});
   db.doc("meta/session").onSnapshot(s=>{if(metaBusy.session||sessT&&quiz.phase==="play")return;savedSession=s.exists?plain(s.data()):null;if(loaded&&state.tab==="today"&&quiz.phase==="home")renderToday();},()=>{});
