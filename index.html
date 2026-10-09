@@ -295,7 +295,7 @@ textarea{min-height:76px;font-family:var(--f-jp);resize:vertical}
 .scope-l{font-size:.72rem;color:var(--muted);letter-spacing:.04em;white-space:nowrap}
 .scope-v{font-size:.92rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.scope-v b{color:var(--accent);font-weight:600;font-size:.82rem;margin-left:2px}
 .scope-c{font-size:.82rem;color:var(--accent);white-space:nowrap}
-.qaskrow{display:flex;justify-content:space-between;align-items:center;gap:8px}.donechip{flex:none;white-space:nowrap}.donechip[aria-pressed="true"]{color:var(--ok);background:var(--ok-soft);border-color:var(--ok)}
+.qaskrow{display:flex;justify-content:space-between;align-items:center;gap:8px}.donechip{flex:none;white-space:nowrap;margin-left:auto}.donechip[aria-pressed="true"]{color:var(--ok);background:var(--ok-soft);border-color:var(--ok)}
 .chip .cnt{opacity:.7;font-size:.9em}.chip .due{font-size:.8em;color:var(--warn)}.chip[aria-pressed="true"] .due{color:inherit;opacity:.85}
 #scopeSheet .chip{padding:8px 12px}
 .scopeask{display:grid;gap:8px;padding:12px;border-radius:12px;background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent)}.scopeask b{color:var(--warn)}.scopeask .row{flex-wrap:wrap}
@@ -1050,7 +1050,7 @@ function setDone(w,on,quiet){
   const upd={done:on?today():""};if(on){upd.flag=false;upd.mark="ok";}else upd.mark=lvOf(w)>=MAXLV?"ok":null;
   Object.assign(w,upd);writeWord(w.id,upd);
 }
-const doneChip=w=>`<button class="mini donechip" data-done="${w.id}" aria-pressed="${!!w.done}" title="암기 완료한 단어는 앞으로 복습에 나오지 않아요">${w.done?"✓ 암기 완료":"암기 완료"}</button>`;
+const doneChip=w=>`<button class="btn donechip" data-done="${w.id}" aria-pressed="${!!w.done}" title="암기 완료한 단어는 앞으로 복습에 나오지 않아요">${w.done?"✓ 암기 완료":"암기 완료"}</button>`;
 function next(){quiz.i++;if(quiz.i>=quiz.items.length)quiz.phase="done";renderToday();window.scrollTo({top:0});}
 function srcNote(p,i){
   const x=p.src&&p.src[i];if(!x)return "";
@@ -1256,9 +1256,9 @@ function renderPlay(){
     const w=q.w;
     box.innerHTML=`<div class="panel">${head}
       <div class="qask">먼저 읽어 보고 넘어가세요. 3개를 읽고 나면 바로 확인 문제가 나와요.</div>
-      <div class="front" style="padding-block:6px"><span class="word" lang="ja" style="font-size:2.4rem">${esc(w.w)}</span><span class="cat">${CATS[w.c]||""} ${jlBadge(w)} ${doneChip(w)}</span></div>
+      <div class="front" style="padding-block:6px"><span class="word" lang="ja" style="font-size:2.4rem">${esc(w.w)}</span><span class="cat">${CATS[w.c]||""} ${jlBadge(w)}</span></div>
       ${detailHtml(w)}
-      <div class="row">${quiz.i>0?'<button class="btn" id="qprev">← 이전</button>':""}<button class="btn primary" id="qintro">다음 →<kbd class="kbd">Enter</kbd></button></div></div>`;
+      <div class="row">${quiz.i>0?'<button class="btn" id="qprev">← 이전</button>':""}<button class="btn primary" id="qintro">다음 →<kbd class="kbd">Enter</kbd></button>${doneChip(w)}</div></div>`;
     $("qintro")?.focus();return;
   }
   const Q=QT[q.type],done=qDone(q),multi=q.parts.length>1;
@@ -1300,7 +1300,7 @@ function renderPlay(){
   if(done&&q.practice) verdict=verdict.replace(" · 다시 보기에 넣었어요","");
   const nextTxt=q.practice?"연습이라 진행도와 복습 날짜는 그대로예요":q.blocked?"오늘 틀렸던 단어라 칸은 다음에 맞혀야 올라가요":q.sameDay?"오늘 이미 한 칸 올린 단어예요":q.result?`다음 복습: ${q.nextDue===addDays(today(),1)?"내일":q.nextDue}`:"내일 다시 나와요";
   box.innerHTML=`<div class="panel">${head}
-    <div class="qask qaskrow"><span>${Q.ask}${leechOf(q.w)?' <span class="badge">자주 틀림</span>':""}</span>${q.practice||quiz.mode==="practice"?"":doneChip(q.w)}</div>
+    <div class="qask qaskrow"><span>${Q.ask}${leechOf(q.w)?' <span class="badge">자주 틀림</span>':""}</span></div>
     <div class="qprompt ${Q.pcls}" ${Q.pcls==="ko"?"":'lang="ja"'}>${prompt}</div>
     ${sub?`<div class="qsub">${sub}</div>`:""}
     ${body}
@@ -1310,7 +1310,7 @@ function renderPlay(){
         :`${leechOf(q.w)?`<div class="leechnote">자주 틀리는 단어예요. 비슷한 말과의 차이와 예문을 한 번 더 읽어 보세요.</div>`:""}
       <div class="row" style="gap:10px"><span class="word" lang="ja" style="font-size:1.4rem">${esc(q.w.w)}</span><span class="cat">${CATS[q.w.c]||""}</span>${jlBadge(q.w)}</div>
       ${detailHtml(q.w)}`}</div>`:""}
-    <div class="row">${quiz.i>0?'<button class="btn" id="qprev">← 이전</button>':""}${done?`<button class="btn primary" id="qnext">${quiz.i+1<n?"다음 →":"결과 보기"}</button>`:""}</div></div>`;
+    <div class="row">${quiz.i>0?'<button class="btn" id="qprev">← 이전</button>':""}${done?`<button class="btn primary" id="qnext">${quiz.i+1<n?"다음 →":"결과 보기"}</button>`:""}${q.practice||quiz.mode==="practice"?"":doneChip(q.w)}</div></div>`;
   if(done) $("qnext")?.focus(); else if(q.type==="type"||q.type==="produce") $("typeIn")?.focus();
 }
 function renderDone(){
