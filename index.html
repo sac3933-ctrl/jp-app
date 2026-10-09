@@ -169,6 +169,8 @@ html[data-furi="tap"] ruby.on{text-decoration:none;background:var(--accent-soft)
 .misslist{display:flex;flex-wrap:wrap;gap:6px 16px}
 .kw{display:inline-flex;flex-direction:column;font-size:.86rem;line-height:1.3}
 /* 문제 */
+.kbd{font:inherit;font-size:.7em;font-weight:500;margin-left:8px;padding:1px 6px;border-radius:5px;border:1px solid currentColor;opacity:.6}
+@media (hover:none),(pointer:coarse){.kbd{display:none}}
 .qhomebtn{display:inline-flex;align-items:center;gap:5px;flex:none;font:inherit;font-size:.85rem;font-weight:600;color:var(--accent);background:var(--accent-soft);border:0;border-radius:999px;padding:8px 13px 8px 11px;cursor:pointer;min-height:36px}
 .qhomebtn:hover{filter:brightness(.97)}
 h1.tohome{cursor:pointer}
@@ -1249,7 +1251,7 @@ function renderPlay(){
       <div class="qask">먼저 읽어 보고 넘어가세요. 3개를 읽고 나면 바로 확인 문제가 나와요.</div>
       <div class="front" style="padding-block:6px"><span class="word" lang="ja" style="font-size:2.4rem">${esc(w.w)}</span><span class="cat">${CATS[w.c]||""} ${jlBadge(w)}</span></div>
       ${detailHtml(w)}
-      <div class="row"><button class="btn primary" id="qintro">알겠어요 (Enter)</button>${quiz.i>0?'<button class="btn" id="qprev">← 이전</button>':""}</div></div>`;
+      <div class="row">${quiz.i>0?'<button class="btn" id="qprev">← 이전</button>':""}<button class="btn primary" id="qintro">다음 →<kbd class="kbd">Enter</kbd></button></div></div>`;
     $("qintro")?.focus();return;
   }
   const Q=QT[q.type],done=qDone(q),multi=q.parts.length>1;
@@ -1269,7 +1271,7 @@ function renderPlay(){
       :`<div class="row"><button class="btn primary" id="qreveal">답 보기 (Space)</button>${q.w.kr&&q.w.kr.replace(/\s/g,"")!==String(q.w.m).replace(/\s/g,"")&&!q.hint?'<button class="btn" id="qhint">힌트</button>':""}</div><p class="note" style="margin:0">머릿속으로 단어와 읽기를 떠올린 뒤 답을 확인하세요.</p>`;
   }else if(q.type==="type"||q.type==="produce"){
     body=q.result===undefined?`<div class="typebox"><input id="typeIn" autocomplete="off" autocapitalize="off" spellcheck="false" lang="ja" placeholder="ひらがな 또는 로마자"><div class="kana-preview" id="kanaPrev"></div>
-      <div class="row"><button class="btn primary" id="qtype">확인 (Enter)</button>${q.type==="produce"&&!q.hint?'<button class="btn" id="qhint">힌트</button>':""}<button class="btn" id="qtypeskip">모르겠어요</button></div></div>`
+      <div class="row"><button class="btn primary" id="qtype">확인<kbd class="kbd">Enter</kbd></button>${q.type==="produce"&&!q.hint?'<button class="btn" id="qhint">힌트</button>':""}<button class="btn" id="qtypeskip">모르겠어요</button></div></div>`
       :`<div class="reveal"><div>내 답: <span class="read">${esc(hira(toKana(q.typed||""))||"(모름)")}</span></div><div>정답: ${q.type==="produce"?`<span class="word" lang="ja" style="font-size:1.3rem">${esc(q.w.w)}</span> `:""}<span class="read" style="font-size:1.2rem">${esc(q.w.r)}</span>${spk(q.w.r,"단어")}</div></div>`;
   }else{
     body=q.parts.map((p,pi)=>{
