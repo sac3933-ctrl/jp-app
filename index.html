@@ -818,7 +818,7 @@ const byOrder=(a,b)=>(a.n||0)-(b.n||0);
 function reviewList(deck){
   return words.filter(w=>inScope(w,deck)&&isDue(w)).sort((a,b)=>(flagOf(b)-flagOf(a))||(dueOf(a)<dueOf(b)?-1:dueOf(a)>dueOf(b)?1:0)||(lvOf(a)-lvOf(b)));
 }
-const newToday=()=>words.filter(w=>w.first===today()).length;
+const newToday=()=>words.filter(w=>w.first===today()||(!w.first&&w.done===today())).length; // 오늘 암기 완료로 넘긴 새 단어도 오늘 몫에 포함
 function newList(deck){
   const room=Math.max(0,(settings.newPerDay|0)-newToday());
   return words.filter(w=>inScope(w,deck)&&isNew(w)).sort(byOrder).slice(0,room);
@@ -993,7 +993,10 @@ addEventListener("pagehide",()=>{if(sessT)saveSessionNow();});
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden"&&sessT)saveSessionNow();});
 function clearSession(){clearTimeout(sessT);if(savedSession&&savedSession.day){savedSession=null;setMeta("session",{day:""});}}
 // 진행 현황은 "단어" 기준 (새 단어는 소개 카드 + 확인 문제 2단계가 한 단어)
-const itemDone=o=>o.type==="intro"?!!o.done:o.result!==undefined;
+const solved=o=>o.type==="intro"?!!o.done:o.result!==undefined;
+// 암기 완료로 표시한 단어는 풀지 않았어도 이 묶음에서 끝난 것으로 셈
+const wordDone=o=>o.w?!!o.w.done:!!(words.find(x=>x.id===o.id)||{}).done;
+const itemDone=o=>solved(o)||wordDone(o);
 function wordProgress(items,idOf){
   const all=new Map();items.forEach(o=>{const id=idOf(o);all.set(id,(all.get(id)??true)&&itemDone(o));});
   const done=[...all.values()].filter(Boolean).length;return {total:all.size,done,left:all.size-done};
@@ -1053,7 +1056,7 @@ function setDone(w,on,quiet){
   Object.assign(w,upd);writeWord(w.id,upd);
 }
 const doneChip=w=>`<button class="btn donechip" data-done="${w.id}" aria-pressed="${!!w.done}" title="암기 완료한 단어는 앞으로 복습에 나오지 않아요">${w.done?"✓ 암기 완료":"암기 완료"}</button>`;
-function next(){quiz.i++;if(quiz.i>=quiz.items.length)quiz.phase="done";renderToday();window.scrollTo({top:0});}
+function next(){quiz.i++;while(quiz.i<quiz.items.length&&!solved(quiz.items[quiz.i])&&wordDone(quiz.items[quiz.i]))quiz.i++;if(quiz.i>=quiz.items.length)quiz.phase="done";renderToday();window.scrollTo({top:0});}
 function srcNote(p,i){
   const x=p.src&&p.src[i];if(!x)return "";
   const bits=p.key==="word"?[x.r,x.m]:p.key==="read"?[x.w,x.m]:[x.w,x.r];
@@ -1163,7 +1166,7 @@ function renderToday(){
   const d=quiz.deck, rev=reviewList(d), nw=newList(d), flags=words.filter(w=>inScope(w,d)&&flagOf(w)).length, leeches=words.filter(w=>inScope(w,d)&&leechOf(w)).length;
   const total=rev.length+nw.length, size=settings.sessionSize|0||20;
   const remainIds=new Set([...rev,...nw].map(w=>w.id)),t0=today();
-  const doneN=words.filter(w=>inScope(w,d)&&!remainIds.has(w.id)&&(w.lastOk===t0||w.lastMiss===t0)).length;
+  const doneN=words.filter(w=>inScope(w,d)&&!remainIds.has(w.id)&&(w.lastOk===t0||w.lastMiss===t0||w.done===t0)).length;
   const planN=doneN+total,pct=planN?Math.round(doneN/planN*100):0;
   const tom=words.filter(w=>inScope(w,d)&&!isNew(w)&&dueOf(w)===addDays(today(),1)).length;
   const week=words.filter(w=>inScope(w,d)&&!isNew(w)&&dueOf(w)>today()&&dueOf(w)<=addDays(today(),7)).length;
