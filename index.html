@@ -219,7 +219,20 @@ ruby rt{font-size:.55em;color:var(--muted);font-weight:400;white-space:nowrap;le
 .ja b ruby rt,.colx b ruby rt{color:var(--accent)}
 .spk{border:0;background:transparent;color:var(--muted);cursor:pointer;padding:2px 5px;border-radius:4px;vertical-align:middle;line-height:0}
 .spk:hover{color:var(--accent)}
-.detail{display:grid;gap:10px}
+.detail{display:grid;gap:12px}
+.dhead{display:flex;align-items:center;gap:6px}.dhead .read{font-size:1.2rem}
+.front~.detail .dhead{justify-content:center}.front~.detail .dmean{text-align:center}
+.dmean{font-size:1.2rem;font-weight:700;line-height:1.4}.dmean-s{font-size:1rem}
+.dkr{display:inline-block;margin-left:8px;font-size:.8rem;font-weight:500;color:var(--ok);border:1px solid var(--ok);border-radius:4px;padding:0 5px;vertical-align:middle}
+.dex{display:grid;gap:4px;padding:12px 14px;border-radius:12px;background:var(--bg)}
+.dex .ja{font-family:var(--f-jp);font-size:1.08rem;line-height:2.1}.dex .ko{color:var(--muted);font-size:.9rem}
+.dexn{justify-self:start;font-size:.8rem;margin-top:2px}
+.dmore{border-top:1px solid var(--line);padding-top:8px}
+.dmore>summary{cursor:pointer;color:var(--muted);font-size:.85rem;list-style:none;display:flex;align-items:center;gap:6px;padding:4px 0}
+.dmore>summary::-webkit-details-marker{display:none}
+.dmore>summary::before{content:"＋";display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;border:1px solid var(--line);font-size:.75rem}
+.dmore[open]>summary::before{content:"－"}
+.dmore-b{display:grid;gap:12px;padding-top:10px}
 .xrow{display:grid;grid-template-columns:5.6em minmax(0,1fr);gap:10px;align-items:baseline}
 .xl{font-size:.72rem;color:var(--muted);letter-spacing:.04em}
 .kj{display:grid;gap:2px}
@@ -324,6 +337,13 @@ textarea{min-height:76px;font-family:var(--f-jp);resize:vertical}
 .hero-done .check{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:var(--ok-soft);color:var(--ok);flex:none}
 .hero-done b{display:block;font-size:1.1rem}
 .sec-h{font-size:.95rem;margin:18px 2px 8px;color:var(--muted);font-weight:600}
+.plist{display:grid;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.prow{display:flex;align-items:center;gap:10px;padding:14px 16px;border:0;border-top:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.prow:first-child{border-top:0}.prow:hover{background:var(--bg)}
+.prow-t{flex:1;font-weight:600;font-size:.95rem}.prow-n{font-weight:700;color:var(--accent);font-size:.9rem}.prow-a{color:var(--muted);font-size:1.1rem}
+.prow-hl .prow-n{background:var(--accent-soft);padding:1px 8px;border-radius:999px;font-size:.78rem}
+.calfold>summary{cursor:pointer;color:var(--muted);font-size:.85rem;padding:4px 0}
+.calfold[open]>summary{margin-bottom:10px}
 .tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .tile{display:grid;gap:4px;text-align:left;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);cursor:pointer;font:inherit;min-width:0}
 .tile:hover:not(:disabled){border-color:var(--accent)}
@@ -1119,25 +1139,36 @@ function kanjiHtml(w){
     const others=words.filter(x=>x.id!==w.id&&!x.kind&&String(x.w||"").includes(c)).slice(0,4);
     return `<div class="kjrow"><span class="kjhead">${kjHead(c)}</span>${others.length?`<span class="kjlist">${others.map(x=>`<span class="kw"><span class="kwtop"><span lang="ja">${x.r&&x.r!==x.w?`<ruby>${esc(x.w)}<rt>${esc(x.r)}</rt></ruby>`:esc(x.w)}</span>${spk(x.r||x.w,esc(x.w))}</span><span class="km">${esc(x.m)}</span></span>`).join("")}</span>`:`<span class="note">다른 등록 단어 없음</span>`}</div>`;}).join("")}</div>`;
 }
+let dMore=(()=>{try{return localStorage.getItem("jpvocab-dmore")==="1";}catch(_){return false;}})();
 function detailHtml(w,opt={}){
   const g=w.g&&groups[w.g],mates=g?g.ids.filter(id=>id!==w.id).map(id=>words.find(x=>x.id===id)).filter(Boolean):[];
   const exs=examples(w),ei=(state.exIdx[w.id]||0)%Math.max(1,exs.length),ex=exs[ei];
+  const krShow=w.kr&&normKo(w.kr)!==normKo(String(w.m).split(/[,，·/(（]/)[0]); // 뜻과 같은 한자음(販売=판매)은 생략
+  const kan=KAN.test(w.w||"")&&w.kind!=="expr";
+  const exBtns=opt.noExBtn?"":`<button class="mini" data-addex="${w.id}">예문 직접 추가</button>${sample?`<button class="mini" data-genex="${w.id}">예문 더 만들기</button>`:""}${ex&&ei>0&&ex.extra?`<button class="mini" data-delex="${w.id}">이 예문 삭제</button>`:""}`;
+  const dlg=(()=>{if(state.tab==="today"&&quiz.phase==="play")return "";const ds=dialogs.filter(x=>(x.wordIds||[]).includes(w.id));
+      return sample||ds.length?`<div class="xrow"><span class="xl">상황 대화</span><span class="row" style="gap:6px">${ds.slice(0,3).map(x=>`<button class="mini" data-dlgopen="${x.id}">${esc(x.title)}</button>`).join("")}${sample?`<button class="mini" data-dlgw="${w.id}">이 단어로 대화 만들기</button>`:""}</span></div>`:"";})();
+  const more=[
+    w.sit?`<div class="xrow"><span class="xl">쓰는 상황</span><span>${esc(w.sit)}</span></div>`:"",
+    w.col?`<div class="xrow"><span class="xl">짝꿍 표현</span><span><span class="colx" lang="ja">${rubyHtml(colSrc(w))}${spk(ttsOf(colSrc(w),w).replace(/^.*→\s*/,""),"짝꿍 표현")}</span>${w.cm?`<span class="ko">${esc(w.cm)}</span>`:""}</span></div>`:"",
+    kan?`<div class="xrow"><span class="xl">한자</span>${kanjiHtml(w)}</div>`:"",
+    mates.length?`<div class="xrow"><span class="xl">비슷한 말</span><span><span lang="ja">${mates.map(x=>esc(x.w)).join(" · ")}</span><span class="gnote">${esc(g.note)}</span></span></div>`:"",
+    w.note?`<div class="xrow"><span class="xl">참고</span><span>${esc(w.note)}</span></div>`:"",
+    exBtns?`<div class="row">${exBtns}</div>`:"",
+    !opt.noExBtn&&state.addEx===w.id?`<div class="exform"><textarea id="exJa" lang="ja" placeholder="일본어 예문 (예: 毎週金曜日に進捗報告を行う。)"></textarea><input id="exKo" placeholder="한국어 뜻 (비워 두면 Claude가 채워요)"><div class="row"><button class="btn primary" data-saveex="${w.id}">저장</button><button class="btn" data-cancelex="1">취소</button><span class="note" id="exMsg"></span></div><span class="note">외울 단어는 자동으로 표시하고, 후리가나도 자동으로 붙여요.</span></div>`:"",
+    dlg
+  ].filter(Boolean).join("");
+  const moreLbl=[w.col?"짝꿍 표현":"",kan?"한자":"",mates.length?"비슷한 말":""].filter(Boolean).join(" · ")||"예문 추가";
+  const open=dMore||state.addEx===w.id;
   return `<div class="detail">
-    ${opt.head===false?"":`<div class="row" style="gap:10px"><span class="read" style="font-size:1.1rem">${esc(w.r)}</span>${spk(w.r||w.w,"단어")}<span class="mean">${esc(w.m)}</span></div>`}
-    ${w.sit?`<div class="xrow"><span class="xl">쓰는 상황</span><span>${esc(w.sit)}</span></div>`:""}
-    ${w.kr?`<div class="xrow"><span class="xl">한자음</span><span class="kr">${esc(w.kr)}</span></div>`:""}
-    ${KAN.test(w.w||"")&&w.kind!=="expr"?`<div class="xrow"><span class="xl">한자별</span>${kanjiHtml(w)}</div>`:""}
-    ${w.col?`<div class="xrow"><span class="xl">짝꿍 표현</span><span><span class="colx" lang="ja">${rubyHtml(colSrc(w))}${spk(ttsOf(colSrc(w),w).replace(/^.*→\s*/,""),"짝꿍 표현")}</span>${w.cm?`<span class="ko">${esc(w.cm)}</span>`:""}</span></div>`:""}
-    ${ex||!opt.noExBtn?`<div class="xrow"><span class="xl">예문${exs.length>1?` ${ei+1}/${exs.length}`:""}</span><span>${ex?`<span class="ja" lang="ja">${rubyHtml(ex.src)}${spk(ttsOf(ex.src,w),"예문")}</span><span class="ko">${esc(ex.ko)}</span>`:`<span class="note">아직 예문이 없어요.</span>`}
-      <span class="row" style="margin-top:4px">${exs.length>1?`<button class="mini" data-nextex="${w.id}">다른 예문 (${ei+1}/${exs.length})</button>`:""}${opt.noExBtn?"":`<button class="mini" data-addex="${w.id}">예문 직접 추가</button>${sample?`<button class="mini" data-genex="${w.id}">예문 더 만들기</button>`:""}${ex&&ei>0&&ex.extra?`<button class="mini" data-delex="${w.id}">이 예문 삭제</button>`:""}`}</span>
-      ${!opt.noExBtn&&state.addEx===w.id?`<div class="exform"><textarea id="exJa" lang="ja" placeholder="일본어 예문 (예: 毎週金曜日に進捗報告を行う。)"></textarea><input id="exKo" placeholder="${sample?"한국어 뜻 (비워 두면 Claude가 채워요)":"한국어 뜻"}"><div class="row"><button class="btn primary" data-saveex="${w.id}">저장</button><button class="btn" data-cancelex="1">취소</button><span class="note" id="exMsg"></span></div><span class="note">외울 단어는 자동으로 표시하고, 후리가나도 자동으로 붙여요.</span></div>`:""}</span></div>`:""}
-    ${mates.length?`<div class="xrow"><span class="xl">비슷한 말</span><span><span lang="ja">${mates.map(x=>esc(x.w)).join(" · ")}</span><span class="gnote">${esc(g.note)}</span></span></div>`:""}
-    ${w.note?`<div class="xrow"><span class="xl">참고</span><span>${esc(w.note)}</span></div>`:""}
-    ${(()=>{if(state.tab==="today"&&quiz.phase==="play")return "";const ds=dialogs.filter(x=>(x.wordIds||[]).includes(w.id));
-      return sample||ds.length?`<div class="xrow"><span class="xl">상황 대화</span><span class="row" style="gap:6px">${ds.slice(0,3).map(x=>`<button class="mini" data-dlgopen="${x.id}">${esc(x.title)}</button>`).join("")}${sample?`<button class="mini" data-dlgw="${w.id}">이 단어로 대화 만들기</button>`:""}</span></div>`:"";})()}
-    ${w.chk===false?`<div class="row"><span class="badge">확인 전</span><span class="note">자동으로 채운 내용이에요. 맞는지 확인해 주세요.</span><button class="mini" data-chk="${w.id}">내용 확인함</button></div>`:""}
+    ${opt.head===false?"":`<div class="dhead"><span class="read">${esc(w.r)}</span>${spk(w.r||w.w,"단어")}</div><div class="dmean">${esc(w.m)}${krShow?`<span class="dkr">${esc(w.kr)}</span>`:""}</div>`}
+    ${opt.head===false&&krShow?`<div class="dmean dmean-s"><span class="dkr">${esc(w.kr)}</span></div>`:""}
+    ${ex?`<div class="dex"><span class="ja" lang="ja">${rubyHtml(ex.src)}${spk(ttsOf(ex.src,w),"예문")}</span><span class="ko">${esc(ex.ko)}</span>${exs.length>1?`<button class="link dexn" data-nextex="${w.id}">다른 예문 ${ei+1}/${exs.length} ›</button>`:""}</div>`:""}
+    ${more?`<details class="dmore"${open?" open":""}><summary>${esc(moreLbl)}</summary><div class="dmore-b">${more}</div></details>`:""}
+    ${w.chk===false?`<div class="row"><span class="badge">확인 전</span><span class="note">자동으로 채운 내용이에요.</span><button class="mini" data-chk="${w.id}">내용 확인함</button></div>`:""}
   </div>`;
 }
+document.addEventListener("toggle",e=>{if(e.target.classList&&e.target.classList.contains("dmore")){dMore=e.target.open;try{localStorage.setItem("jpvocab-dmore",dMore?"1":"0");}catch(_){}}},true);
 
 /* ================= 학습 달력 ================= */
 function progressHtml(){
@@ -1193,11 +1224,13 @@ function calendarHtml(){
   return `<div class="panel rec">
     <div class="rec-h"><h2>학습 기록</h2><div class="split"><span>연속 <b>${streakNow()}일</b></span><span>이번 달 <b>${thisMonth}일</b></span><span>누적 <b>${total}</b>문제</span>${(()=>{const r=retention7();return r.q>=10?`<span title="최근 7일 복습 문제 ${r.q}개 중 ${r.ok}개 맞힘">기억률 <b>${r.pct}%</b></span>`:"";})()}</div></div>
     ${(()=>{const r=retention7();if(r.q<10)return "";const tip=r.pct<80?"80% 아래예요. 복습 간격이 긴 편이니 하루 새 단어를 줄이고 복습을 먼저 하세요.":r.pct>95?"95%를 넘어요. 복습이 너무 쉬운 편이니 확실히 아는 단어는 암기 완료로 넘기세요.":"80~95% 사이가 알맞아요. 지금 간격이 잘 맞고 있어요.";return `<p class="note" style="margin:0">최근 7일 복습 기억률 ${r.pct}% (${r.q}문제) · ${tip}</p>`;})()}
+    <details class="calfold" id="calFold"${state.calOpen||state.calDay?" open":""}><summary>달력 · 단어 진행도 보기</summary>
     <div class="mcal-nav"><button class="iconbtn" data-calm="-1" aria-label="이전 달" ${canPrev?"":"disabled"}>‹</button><b>${y}년 ${m}월</b><button class="iconbtn" data-calm="1" aria-label="다음 달" ${canNext?"":"disabled"}>›</button></div>
     <div class="mcal"><span class="mw">일</span><span class="mw">월</span><span class="mw">화</span><span class="mw">수</span><span class="mw">목</span><span class="mw">금</span><span class="mw">토</span>${cells}</div>
     <div class="cal-legend"><span>날짜를 누르면 그날 기록이 보여요 · 적게</span><i class="cell c1"></i><i class="cell c2"></i><i class="cell c3"></i><i class="cell c4"></i><span>많이</span><span style="margin-left:8px"><i class="lsdot"></i> 듣기</span></div>
     ${detail}
     <details class="more2"${state.progOpen?" open":""} id="progMore"><summary>단어 진행도 · JLPT별 보기</summary>${progressHtml()}</details>
+    </details>
   </div>`;
 }
 
@@ -1278,6 +1311,7 @@ function renderToday(){
         <div class="cta-sub"><span class="note">새 단어는 하루 ${settings.newPerDay}개까지예요.</span><button class="link" id="openSet2">늘리기</button></div>${sideLine}`;
     }
   }
+  const prow=(id,title,n,hl)=>`<button class="prow${hl?" prow-hl":""}" id="${id}"><span class="prow-t">${title}</span>${n!==""&&n!=null?`<span class="prow-n">${n}</span>`:""}<span class="prow-a" aria-hidden="true">›</span></button>`;
   const tile=(id,title,sub,n,dis)=>`<button class="tile" id="${id}"${dis?" disabled":""}><span class="tile-t">${title}${n!=null?` <b>${n}</b>`:""}</span><span class="tile-s">${sub}</span></button>`;
   box.innerHTML=`<div class="panel hero2">
       <div class="hero-top"><span class="date">${dd.getMonth()+1}월 ${dd.getDate()}일 ${wk}요일</span>${st?`<span class="streak">연속 ${st}일째</span>`:""}</div>
@@ -1285,17 +1319,18 @@ function renderToday(){
       ${main}
     </div>
     <h2 class="sec-h">더 연습하기</h2>
-    <div class="tiles">
-      <button class="tile tile-wide" id="goListenT"><span class="tile-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 14v-2a8 8 0 0 1 16 0v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="3" y="13" width="5" height="7" rx="2" fill="currentColor"/><rect x="16" y="13" width="5" height="7" rx="2" fill="currentColor"/></svg></span><span class="tile-t">듣기 연습${lsResumable()?` <b>이어 듣기</b>`:""}</span><span class="tile-s">운전·운동 중에 화면 안 보고 귀로 복습</span></button>
-      ${tile("goFlag","다시 보기 단어","틀렸거나 표시한 단어만",flags,!flags)}
-      ${tile("goLeech","자주 틀리는 단어","5번 이상 틀린 단어",leeches,!leeches)}
-      ${tile("goSpeakT","말하기 연습","따라 말하기 · SJPT식 질문",null,false)}
-      ${tile("goDlgT","상황 대화","배운 단어로 짧은 대화문",dialogs.length?dialogs.length:null,false)}
-      ${(()=>{const n=triPool(d).length;return n>=20?`<button class="tile tile-full" id="goTriage"><span class="tile-t">안 배운 단어 빠른 분류 <b>${n}</b></span><span class="tile-s">단어·뜻만 보고 알아요/몰라요로 넘겨요. 아는 단어는 바로 암기 완료, 모르는 단어만 새 단어로 나와요.</span></button>`:"";})()}
+    <div class="plist">
+      ${prow("goListenT","듣기 연습",lsResumable()?"이어 듣기":"",true)}
+      ${flags?prow("goFlag","다시 보기 단어",flags):""}
+      ${leeches?prow("goLeech","자주 틀리는 단어",leeches):""}
+      ${prow("goSpeakT","말하기 연습","")}
+      ${prow("goDlgT","상황 대화",dialogs.length||"")}
+      ${(()=>{const n=triPool(d).length;return n>=20?prow("goTriage","안 배운 단어 빠른 분류",n):"";})()}
     </div>
     ${calendarHtml()}
     ${bkWarn?`<div class="bkline"><span>${bkDays===null?"아직 단어장을 백업한 적이 없어요.":`마지막 백업이 ${bkDays}일 전이에요.`}</span><button class="link" id="bkNow">지금 백업</button></div>`:""}`;
   const pm=$("progMore");if(pm)pm.ontoggle=e=>{state.progOpen=e.target.open;};
+  const cf=$("calFold");if(cf)cf.ontoggle=e=>{state.calOpen=e.target.open;};
 }
 function renderSettings(){
   const b=$("setBody");if(!b)return;
@@ -1346,7 +1381,7 @@ function renderPlay(){
   if(q.type==="intro"){
     const w=q.w;
     box.innerHTML=`<div class="panel">${head}
-      <div class="qask">먼저 읽어 보고 넘어가세요. 3개를 읽고 나면 바로 확인 문제가 나와요.</div>
+      ${quiz.i<3?`<div class="qask">읽어 보고 넘어가세요. 3개 뒤에 확인 문제가 나와요.</div>`:""}
       <div class="front" style="padding-block:6px"><span class="word" lang="ja" style="font-size:${String(w.w).length>12?"1.45rem":String(w.w).length>8?"1.8rem":"2.4rem"}">${esc(w.w)}</span><span class="cat">${CATS[w.c]||""} ${jlBadge(w)}</span></div>
       ${detailHtml(w)}
       <div class="row">${quiz.i>0?'<button class="btn" id="qprev">← 이전</button>':""}<button class="btn primary" id="qintro">다음 →<kbd class="kbd">Enter</kbd></button>${doneChip(w)}</div></div>`;
