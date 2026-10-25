@@ -338,6 +338,24 @@ textarea{min-height:76px;font-family:var(--f-jp);resize:vertical}
 .hero-done .check{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:var(--ok-soft);color:var(--ok);flex:none}
 .hero-done b{display:block;font-size:1.1rem}
 .sec-h{font-size:.95rem;margin:18px 2px 8px;color:var(--muted);font-weight:600}
+.prow-tt{flex:1;display:grid;gap:2px;min-width:0}.prow-s{font-size:.78rem;color:var(--muted);font-weight:400}
+.prow-due{font-size:.75rem;font-weight:700;color:var(--warn);background:var(--warn-soft);border-radius:999px;padding:2px 8px;white-space:nowrap}
+.hub{gap:12px}.revrow{box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.revrow-t{flex:1;display:grid;gap:2px}.revrow-0{cursor:default;justify-content:center}
+.favrow{display:flex;flex-wrap:wrap;gap:8px}.favchip{font-size:.85rem}
+.srcp{gap:12px}.srcp+.plist{margin-top:12px}.srctop{display:flex}.srch{margin:0;font-size:1.35rem}.srcstat{font-size:.9rem}
+.seg4{display:grid;grid-template-columns:repeat(4,1fr)}
+.dlist{display:grid;gap:8px}.dcard{display:flex;align-items:stretch;gap:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.dcard.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.dsel{flex:none;width:44px;border:0;border-right:1px solid var(--line);background:transparent;color:var(--on-accent);font-size:1rem;cursor:pointer;display:grid;place-items:center}
+.dsel::before{content:"";width:22px;height:22px;border-radius:50%;border:2px solid var(--line);grid-area:1/1}
+.dsel[aria-pressed="true"]::before{background:var(--accent);border-color:var(--accent)}.dsel{display:grid}.dsel{font-weight:700}
+.dbody{flex:1;min-width:0;display:grid;gap:3px;padding:10px 12px;border:0;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.dprev{font-family:var(--f-jp);font-size:.88rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dfav{flex:none;width:44px;border:0;background:transparent;color:var(--warn);font-size:1.2rem;cursor:pointer}
+.dladd{margin-top:6px}.dlfav[aria-pressed="true"]{color:var(--warn);border-color:var(--warn)}
+.dselbar{position:sticky;bottom:calc(64px + env(safe-area-inset-bottom));margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;border-radius:14px;background:var(--surface);border:1px solid var(--accent);box-shadow:0 6px 20px rgba(0,0,0,.15);z-index:5}
+.dselbar span{flex:1}
 .plist{display:grid;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
 .prow{display:flex;align-items:center;gap:10px;padding:14px 16px;border:0;border-top:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
 .prow:first-child{border-top:0}.prow:hover{background:var(--bg)}
@@ -1012,8 +1030,8 @@ function startSession(mode){
   }else if(mode==="flag"){
     items=shuffle(words.filter(w=>inScope(w,deck)&&flagOf(w))).slice(0,size).map(makeQuestion);
   }else{
-    const rev=reviewQueue(deck).list.slice(0,size);
-    const nw=newList(deck).slice(0,Math.max(0,size-rev.length));
+    const rev=mode==="new"?[]:reviewQueue(deck).list.slice(0,size);
+    const nw=mode==="review"?[]:mode==="new"?words.filter(w=>inScope(w,deck)&&isNew(w)).sort(byOrder).slice(0,Math.min(10,size)):newList(deck).slice(0,Math.max(0,size-rev.length));
     const revQs=shuffle(rev.map(makeQuestion));revQs.forEach(q=>q.kind="review");
     // 새 단어는 3개씩: 읽기 카드 3장 → (복습 몇 문제로 잠깐 간격) → 그 3개 확인 문제
     const G=3,groups=Math.ceil(nw.length/G),per=groups?Math.ceil(revQs.length/groups):0;let ri=0;
@@ -1268,6 +1286,52 @@ function renderTriage(){
     <div class="row" style="justify-content:space-between">${tri.last?`<button class="mini" id="triUndo">방금 것 되돌리기</button>`:"<span></span>"}<span class="note">몰라요로 넘긴 단어는 하루 새 단어 개수대로 차례차례 나와요.</span></div>
   </div>`;
 }
+/* ================= 자료: 단어장 안의 학습 묶음 ================= */
+const catsOf=(dk,ex)=>[...new Set(words.filter(w=>deckOf(w)===dk).map(w=>w.c||"gen"))].filter(c=>!ex.includes(c));
+const SRC_DEF=[
+  {k:"expr",t:"업무 정형 표현",s:"메일·회의·보고서 문장",deck:"work",cats:()=>["expr"]},
+  {k:"work",t:"업무 단어",s:"공정·보고·사업 용어",deck:"work",cats:()=>catsOf("work",["expr"])},
+  {k:"kg",t:"회화 문법",s:"～てみる·～そうだ 같은 문형",deck:"daily",cats:()=>["kg"]},
+  {k:"kv",t:"회화 단어",s:"일상 회화에 나오는 말",deck:"daily",cats:()=>["kv"]},
+  {k:"n3",t:"JLPT N3",s:"",deck:"daily",cats:()=>["n3"]},
+  {k:"n2",t:"JLPT N2",s:"",deck:"daily",cats:()=>["n2"]},
+  {k:"daily",t:"일상 단어",s:"여행·생활·감정 표현",deck:"daily",cats:()=>catsOf("daily",["kg","kv","n3","n2"])}
+];
+const srcWords=sd=>{const cs=sd.cats();return cs.length?words.filter(w=>inDeck(w,sd.deck)&&cs.includes(w.c||"gen")):[];};
+function srcGo(k){
+  const sd=SRC_DEF.find(x=>x.k===k);if(!sd)return;
+  quiz.src=k;quiz.phase="src";quiz.deck=sd.deck;quiz.cats=sd.cats();saveScope();
+  pushLayer("src");renderToday();window.scrollTo(0,0);
+}
+const prowHtml=(attr,title,sub,right)=>`<button class="prow" ${attr}><span class="prow-tt"><span class="prow-t">${title}</span>${sub?`<span class="prow-s">${sub}</span>`:""}</span>${right||""}<span class="prow-a" aria-hidden="true">›</span></button>`;
+function renderSrc(){
+  const box=$("today"),sd=SRC_DEF.find(x=>x.k===quiz.src);
+  if(!sd){quiz.phase="home";return renderToday();}
+  const ws=srcWords(sd),d=quiz.deck,rq=reviewQueue(d),nw=newList(d),size=settings.sessionSize|0||20;
+  const moreNew=ws.filter(isNew).length,learned=ws.filter(w=>!isNew(w)).length,doneN=ws.filter(isDone).length,total=rq.list.length+nw.length;
+  const rs=resumable(),mine=rs&&!batchOff(rs);
+  let main;
+  if(mine) main=`<button class="cta" id="goResume"><span class="cta-t">이어서 풀기</span><span class="cta-s">${rs.left}개 남음${rs.nextW?` · 다음 <span lang="ja">${esc(rs.nextW)}</span>`:""}</span></button><div class="cta-sub"><button class="link" id="dropResume">이 묶음 닫고 새로 시작</button></div>`;
+  else if(total){const r=Math.min(rq.list.length,size),n=Math.min(nw.length,Math.max(0,size-r));
+    main=`<button class="cta" id="goToday"><span class="cta-t">학습 시작</span><span class="cta-s">${[r?`복습 ${r}`:"",n?`새로 배울 것 ${n}`:""].filter(Boolean).join(" · ")}</span></button>`;}
+  else if(moreNew) main=`<p class="note" style="margin:0;text-align:center">오늘 몫은 다 했어요. 더 하고 싶으면 이어서 배워도 돼요.</p><button class="cta cta2" id="goMoreNew"><span class="cta-t">더 배우기</span><span class="cta-s">다음 ${Math.min(10,moreNew)}개</span></button>`;
+  else main=`<p class="note" style="margin:0;text-align:center">이 자료는 다 배웠어요. 복습할 때가 되면 다시 나와요.</p>`;
+  const flags=ws.filter(flagOf).length,leech=ws.filter(leechOf).length;
+  box.innerHTML=`<div class="panel srcp">
+      <div class="srctop"><button class="link" id="srcBack">← 처음으로</button></div>
+      <h2 class="srch">${esc(sd.t)}</h2>
+      <div class="split srcstat"><span>전체 <b>${ws.length}</b></span><span>배운 것 <b>${learned}</b></span>${doneN?`<span>암기 완료 <b>${doneN}</b></span>`:""}</div>
+      ${main}
+    </div>
+    <div class="plist">
+      ${prowHtml('id="srcBook"',"카드로 훑어보기","단어장에서 한 장씩 넘겨 보기")}
+      ${prowHtml('id="srcListen"',"듣기 연습","운전·운동 중에 귀로 복습")}
+      ${prowHtml('id="srcShadow"',"따라 말하기","예문을 듣고 소리 내어 따라 하기")}
+      ${moreNew>=20?prowHtml('id="goTriage"',"아는 것 골라내기",`안 배운 ${moreNew}개 중 이미 아는 건 빠르게 넘기기`):""}
+      ${flags?prowHtml('id="goFlag"',"다시 보기",`틀렸거나 표시한 ${flags}개`):""}
+      ${leech?prowHtml('id="goLeech"',"자주 틀리는 것",`${leech}개`):""}
+    </div>`;
+}
 /* ================= 오늘 화면 ================= */
 function renderToday(){
   const box=$("today");
@@ -1275,59 +1339,39 @@ function renderToday(){
   if(quiz.phase==="play"){quiz.doneSaved=false;saveSession();pushLayer("quiz");return renderPlay();}
   if(quiz.phase==="triage"){pushLayer("quiz");return renderTriage();}
   if(quiz.phase==="done"){if(!quiz.doneSaved){quiz.doneSaved=true;if(quiz.items.some(q=>!itemDone(q)))saveSessionNow();else clearSession();}return renderDone();}
-  const d=quiz.deck, rq=reviewQueue(d), rev=rq.list, nw=newList(d), flags=words.filter(w=>inScope(w,d)&&flagOf(w)).length, leeches=words.filter(w=>inScope(w,d)&&leechOf(w)).length;
-  const total=rev.length+nw.length, size=settings.sessionSize|0||20;
-  const remainIds=new Set([...rq.all,...nw].map(w=>w.id)),t0=today();
-  const doneN=words.filter(w=>inScope(w,d)&&!remainIds.has(w.id)&&(w.lastOk===t0||w.lastMiss===t0||w.done===t0)).length;
-  const planN=doneN+total,pct=planN?Math.round(doneN/planN*100):0;
-  const tom=words.filter(w=>inScope(w,d)&&!isNew(w)&&dueOf(w)===addDays(today(),1)).length;
-  const week=words.filter(w=>inScope(w,d)&&!isNew(w)&&dueOf(w)>today()&&dueOf(w)<=addDays(today(),7)).length;
-  const dd=new Date(), wk="일월화수목금토"[dd.getDay()];
-  const st=streakNow(), doneToday=(dayLog(today())||{}).q||0;
-  const lb=settings.lastBackup, bkDays=lb?Math.round((Date.parse(today())-Date.parse(lb))/864e5):null;
+  if(quiz.phase==="src")return renderSrc();
+  const dd=new Date(),wk="일월화수목금토"[dd.getDay()];
+  const lb=settings.lastBackup,bkDays=lb?Math.round((Date.parse(today())-Date.parse(lb))/864e5):null;
   const bkWarn=words.length&&(bkDays===null||bkDays>=30);
-  const deckN=words.filter(w=>inScope(w,d)).length;
-  const rs=resumable();
-  const seg=`<button class="scopebar" id="openScope" aria-haspopup="dialog"><span class="scope-l">공부 범위</span><span class="scope-v">${esc(scopeLabel())} <b>${deckN}개</b></span><span class="scope-c" aria-hidden="true">바꾸기 ›</span></button>`;
-  let main;
-  if(!deckN){
-    main=`<div class="hero-msg"><b>'${esc(scopeLabel())}' 범위에 아직 단어가 없어요</b><span class="note">단어를 추가하거나 공부 범위를 넓혀 보세요.</span></div>
-      <button class="cta" id="goAdd"><span class="cta-t">${DECKS[d]} 단어 추가하기</span></button>
-      <div class="cta-sub"><button class="link" data-scopereset="1">전체 범위로 보기</button></div>`;
-  }else{
-    const prog=total||doneN?`<div class="prog2"><div class="prog2-n"><b>${doneN}</b><span>/ ${planN}개 완료</span></div><span class="prog2-p">${pct}%</span></div>
-      <div class="tbar" role="progressbar" aria-label="오늘 진행률" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div>`:"";
-    const side=rs&&rs.mode!=="today"; // 다시 보기·자주 틀리는 단어 연습은 오늘 학습을 가리지 않고 작은 줄로
-    const sideLine=side?`<div class="cta-sub"><span>${rs.mode==="flag"?"다시 보기 연습을":rs.mode==="leech"?"자주 틀리는 단어 연습을":rs.mode==="practice"?"오늘 단어 다시 풀기를":"틀린 단어 다시 풀기를"} 하던 중이에요 (${rs.left}개 남음)</span><button class="link" id="goResume">이어서</button></div>`:"";
-    if(rs&&!side){
-      const off=batchOff(rs);
-      main=`${prog}<button class="cta" id="goResume"><span class="cta-t">이어서 풀기</span><span class="cta-s">${rs.left}개 남음${rs.nextW?` · 다음 <span lang="ja">${esc(rs.nextW)}</span>`:""}${off?` · 이전 범위: ${esc(batchScope(rs))}`:""}</span></button>
-        <div class="cta-sub">${off?`<span class="note">지금 범위(${esc(scopeLabel())})와 다른 묶음이에요.</span>`:""}<button class="link" id="dropResume">${off?"닫고 지금 범위로 새로 시작":"풀던 묶음 닫고 새로 시작"}</button></div>`;
-    }else if(total){
-      main=`${prog}<button class="cta" id="goToday"><span class="cta-t">${total>size?`${size}개 먼저 풀기`:"오늘 학습 시작"}</span><span class="cta-s">복습 ${rev.length} · 새 단어 ${nw.length}${total>size?` · 전체 ${total}개 남음`:""}</span></button>
-        <div class="cta-sub"><span class="note">내일 복습 ${tom}개 · 이번 주 ${week}개${rq.deferred?` · 상한을 넘은 ${rq.deferred}개는 내일로`:""}</span></div>${sideLine}`;
-    }else{
-      main=`<div class="hero-done"><span class="check" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-        <div><b>오늘 할 일을 다 했어요</b><span class="note">${doneN?`${doneN}개 완료 · `:""}내일 복습 ${tom}개 · 이번 주 ${week}개${rq.deferred?` · 상한을 넘은 ${rq.deferred}개는 내일로`:""}</span></div></div>
-        ${studiedToday(d).length?`<button class="cta cta2" id="goPractice"><span class="cta-t">오늘 공부한 ${studiedToday(d).length}개 다시 풀기</span><span class="cta-s">연습 모드 · 진행도와 복습 날짜는 바뀌지 않아요</span></button>`:""}
-        <div class="cta-sub"><span class="note">새 단어는 하루 ${settings.newPerDay}개까지예요.</span><button class="link" id="openSet2">늘리기</button></div>${sideLine}`;
-    }
-  }
-  const prow=(id,title,n,hl)=>`<button class="prow${hl?" prow-hl":""}" id="${id}"><span class="prow-t">${title}</span>${n!==""&&n!=null?`<span class="prow-n">${n}</span>`:""}<span class="prow-a" aria-hidden="true">›</span></button>`;
-  const tile=(id,title,sub,n,dis)=>`<button class="tile" id="${id}"${dis?" disabled":""}><span class="tile-t">${title}${n!=null?` <b>${n}</b>`:""}</span><span class="tile-s">${sub}</span></button>`;
-  box.innerHTML=`<div class="panel hero2">
-      <div class="hero-top"><span class="date">${dd.getMonth()+1}월 ${dd.getDate()}일 ${wk}요일</span>${st?`<span class="streak">연속 ${st}일째</span>`:""}</div>
-      ${seg}
-      ${main}
+  const rs=resumable(),lr=lsResumable(),cap=settings.reviewCap|0||40;
+  const dueAll=Math.min(cap,words.filter(isDue).length),mins=Math.max(1,Math.round(dueAll*10/60));
+  let cont="";
+  if(rs) cont=`<button class="cta" id="goResume"><span class="cta-t">이어서 하기</span><span class="cta-s">${esc(rs.scope||batchScope(rs))} · ${rs.left}개 남음</span></button><div class="cta-sub"><button class="link" id="dropResume">이 묶음 닫기</button></div>`;
+  else if(lr) cont=`<button class="cta" id="goListenC"><span class="cta-t">이어서 하기</span><span class="cta-s">${lr.q[0]&&lr.q[0].k==="s"?"따라 말하기":"듣기 연습"} · 남은 ${fmtMin(lr.q.slice(lr.i).reduce((t,it)=>t+lsDur(it),0))}</span></button>`;
+  else{const ld=dialogs.find(x=>x.id===settings.lastDlg);if(ld)cont=`<button class="cta cta2" data-dlgopen="${ld.id}"><span class="cta-t">이어서 보기</span><span class="cta-s">상황 대화 · ${esc(ld.title)}</span></button>`;}
+  const revRow=dueAll?`<button class="revrow" id="goReview"><span class="revrow-t"><b>복습할 것 ${dueAll}개</b><span class="note">약 ${mins}분 · 모든 자료에서</span></span><span class="prow-a" aria-hidden="true">›</span></button>`
+    :`<div class="revrow revrow-0"><span class="note">지금 복습할 것은 없어요. 아래 자료에서 골라 공부해 보세요.</span></div>`;
+  const favs=dialogs.filter(x=>x.fav);
+  const srcRows=SRC_DEF.map(sd=>{const ws=srcWords(sd);if(!ws.length)return "";const learned=ws.filter(w=>!isNew(w)).length,due=ws.filter(isDue).length;
+    return prowHtml(`data-src="${sd.k}"`,sd.t,`${ws.length}개 · 배운 것 ${learned}${sd.s?` · ${sd.s}`:""}`,due?`<span class="prow-due">복습 ${due}</span>`:"");}).join("");
+  const flags=words.filter(flagOf).length,leeches=words.filter(leechOf).length;
+  box.innerHTML=`<div class="panel hero2 hub">
+      <div class="hero-top"><span class="date">${dd.getMonth()+1}월 ${dd.getDate()}일 ${wk}요일</span></div>
+      ${cont}
+      ${revRow}
     </div>
-    <h2 class="sec-h">더 연습하기</h2>
+    ${favs.length?`<h2 class="sec-h">★ 즐겨찾기</h2><div class="favrow">${favs.map(x=>`<button class="chip favchip" data-dlgopen="${x.id}">${esc(x.title)}</button>`).join("")}</div>`:""}
+    <h2 class="sec-h">자료</h2>
     <div class="plist">
-      ${prow("goListenT","듣기 연습",lsResumable()?"이어 듣기":"",true)}
-      ${flags?prow("goFlag","다시 보기 단어",flags):""}
-      ${leeches?prow("goLeech","자주 틀리는 단어",leeches):""}
-      ${prow("goSpeakT","말하기 연습","")}
-      ${prow("goDlgT","상황 대화",dialogs.length||"")}
-      ${(()=>{const n=triPool(d).length;return n>=20?prow("goTriage","안 배운 단어 빠른 분류",n):"";})()}
+      ${srcRows}
+      ${prowHtml('id="goDlgT"',"상황 대화",`${dialogs.length}개 · 골라서 따라 말하기·듣기`)}
+    </div>
+    <h2 class="sec-h">연습</h2>
+    <div class="plist">
+      ${prowHtml('id="goListenT"',"듣기 연습","",lr?`<span class="prow-due">이어 듣기</span>`:"")}
+      ${prowHtml('id="goSpeakT"',"말하기 연습","")}
+      ${flags?prowHtml('id="goFlag"',"다시 보기 단어","",`<span class="prow-n">${flags}</span>`):""}
+      ${leeches?prowHtml('id="goLeech"',"자주 틀리는 단어","",`<span class="prow-n">${leeches}</span>`):""}
     </div>
     ${calendarHtml()}
     ${bkWarn?`<div class="bkline"><span>${bkDays===null?"아직 단어장을 백업한 적이 없어요.":`마지막 백업이 ${bkDays}일 전이에요.`}</span><button class="link" id="bkNow">지금 백업</button></div>`:""}`;
@@ -1515,7 +1559,7 @@ function renderBook(){
 /* ================= 말하기 (SJPT 대비) ================= */
 const SRC=window.SpeechRecognition||window.webkitSpeechRecognition;
 let srBlocked=false,srCur=null;
-const sp={mode:null,items:[],i:0,furi:true,heard:"",listening:false,shown:false,ok:0,miss:[],qtype:"work",q:null,ans:"",fb:null,busy:false,err:""};
+const sp={dfilter:"all",dsel:[],dhide:false,mode:null,items:[],i:0,furi:true,heard:"",listening:false,shown:false,ok:0,miss:[],qtype:"work",q:null,ans:"",fb:null,busy:false,err:""};
 const SJPT_TYPES={intro:"자기소개·회사 소개",work:"업무 설명",situ:"상황 대응(롤플레이)",opin:"의견 말하기"};
 function listen(onText,onEnd){
   if(!SRC||srBlocked) return false;
@@ -1813,10 +1857,11 @@ function dlgHtml(dl){
   return `<div class="dlghead"><b>${esc(dl.title)}</b><span class="note">${esc(dl.scene)}${dl.cond?` · ${esc(dl.cond.replace(/(상대|분위기|형식): /g,""))}`:""}${dl.level?` · ${esc(dl.level)}`:""}</span>
       <span class="note">A: ${esc(dl.roles.A)} · B: ${esc(dl.roles.B)}</span>
       ${ws.length?`<span class="row" style="gap:6px">${ws.map(w=>`<span class="chip" style="cursor:default" lang="ja">${esc(w.w)}</span>`).join("")}</span>`:""}</div>
-    <div class="row"><button class="btn" id="dlPlay">▶ 전체 듣기</button><span class="lbl">롤플레이</span><button class="chip" data-drole="A" aria-pressed="${sp.drole==="A"}">내가 A</button><button class="chip" data-drole="B" aria-pressed="${sp.drole==="B"}">내가 B</button><button class="chip" id="dlKo" aria-pressed="${sp.dko}">해석</button>${furiChip()}</div>
+    <div class="row"><button class="btn" id="dlPlay">▶ 전체 듣기</button><span class="lbl">롤플레이</span><button class="chip" data-drole="A" aria-pressed="${sp.drole==="A"}">내가 A</button><button class="chip" data-drole="B" aria-pressed="${sp.drole==="B"}">내가 B</button><button class="chip" id="dlKo" aria-pressed="${sp.dko}">해석</button><button class="chip" id="dlHide" aria-pressed="${!!sp.dhide}">일본어 가리기</button>${furiChip()}</div>
     ${canSpeak?(()=>{const vs=voiceSet();return `<div class="row"><span class="lbl">목소리</span><button class="chip" id="dlVoice">${dlgGender==="AmBf"?"A 남성 · B 여성":"A 여성 · B 남성"}</button><span class="note">${!vs.n?"이 기기에 일본어 음성이 없어요.":vs.hasM&&vs.hasF?"":!vs.hasM?"이 기기에는 일본어 남성 음성이 없어 높낮이로 구분해요.":"이 기기에는 일본어 여성 음성이 없어 높낮이로 구분해요."}</span></div>`;})():""}
+    ${sp.dhide&&!sp.drole?`<p class="note" style="margin:0">해석만 보고 일본어로 말해 본 뒤 "보기"로 확인하세요.</p>`:""}
     ${sp.drole?`<p class="note" style="margin:0">내 역할(${sp.drole}) 대사는 가려져 있어요. 해석을 보고 소리 내어 말한 뒤 "보기"로 확인하세요.</p>`:""}
-    <div class="dlg">${dl.lines.map((l,i)=>{const hide=sp.drole===l.who&&!sp.dshow[i];
+    <div class="dlg">${dl.lines.map((l,i)=>{const hide=(sp.dhide||sp.drole===l.who)&&!sp.dshow[i];
       return `<div class="dl-line ${l.who==="B"?"dl-b":"dl-a"}"><span class="who">${l.who}</span><div class="dl-body">
         ${hide?`<div class="dl-hidden"><span class="ko">${esc(l.ko.replace(/[\[\]]/g,""))}</span><button class="mini" data-dshow="${i}">보기</button></div>`
           :`<span class="ja" lang="ja">${rubyHtml(l.src)}${dspk(ttsOf(l.src),l.who)}</span>${sp.dko||sp.drole===l.who?`<span class="ko">${esc(l.ko.replace(/[\[\]]/g,""))}</span>`:""}`}
@@ -1824,18 +1869,12 @@ function dlgHtml(dl){
     ${dl.points&&dl.points.length?`<div class="xrow"><span class="xl">표현 포인트</span><ul class="pts">${dl.points.map((p,i)=>{const have=addedExpr[p.ja]||words.some(w=>w.w===p.ja.trim());const busy=addingExpr[p.ja];
       return `<li><span lang="ja">${esc(p.ja)}</span> — ${esc(p.ko)} ${have?`<span class="added">✓ 단어장에 있음</span>`:sample?`<button class="mini" data-addpt="${i}" ${busy?"disabled":""}>${busy?"추가하는 중…":"+ 단어장에 추가"}</button>`:""}</li>`;}).join("")}</ul></div>`:""}`;
 }
+function dlgState(d){const s=shMeta.sets&&shMeta.sets["d:"+d.id];return s?`따라 말하기 ${s.n||1}번`:"";}
 function renderDlg(){
   const box=$("speak"),deck=dlgDeck();
   const head=`<div class="qtop"><span>상황 대화</span><button class="mini" id="spHome">말하기 처음으로</button></div>`;
-  if(sp.dv==="new"||sp.dbusy){box.innerHTML=`<div class="panel">${head}<div class="empty">대화를 만드는 중… (20~40초)</div></div>`;return;}
-  if(sp.dv==="view"){
-    const dl=dialogs.find(x=>x.id===sp.dcur);if(!dl){sp.dv="list";return renderDlg();}
-    box.innerHTML=`<div class="panel">${head}${dlgHtml(dl)}
-      <div class="row"><button class="btn" id="dlBack">← 대화 목록</button><button class="btn primary ai-only" id="dlAgain">같은 단어로 다른 대화</button><button class="btn danger" data-dldel="${dl.id}">삭제</button></div></div>`;
-    return;
-  }
-  const mine=dialogs.slice().sort((a,b)=>(b.at||0)-(a.at||0));
-  box.innerHTML=`<div class="panel">${head}
+  if(sp.dv==="new"||sp.dbusy){if(sp.dbusy){box.innerHTML=`<div class="panel">${head}<div class="empty">대화를 만드는 중… (20~40초)</div></div>`;return;}
+  box.innerHTML=`<div class="panel">${head}<div class="row"><button class="btn" id="dlBack">← 대화 목록</button></div><h2 class="srch" style="margin:0">Claude로 새 대화 만들기</h2>
     <p class="note ai-off">새 대화를 만들려면 설정에서 내 Anthropic API 키를 넣어 주세요. 저장된 대화는 그대로 볼 수 있어요. <button class="link" data-openset="1">설정 열기</button></p><div class="ai-only"><div class="seg seg2" role="group" aria-label="장면 종류"><button data-dscope="work" aria-pressed="${deck==="work"}">업무 장면</button><button data-dscope="daily" aria-pressed="${deck==="daily"}">일상 장면</button></div>
     <div class="dlstep"><span class="lbl">장면</span>
       <div class="row">${["",...Object.keys(DLG_SCENES[deck])].map(c=>`<button class="chip" data-dcat="${esc(c)}" aria-pressed="${sp.dcat===c&&!sp.dfree}">${c||"아무거나"}</button>`).join("")}</div>
@@ -1851,9 +1890,40 @@ function renderDlg(){
       :[["today","오늘 공부한 단어"],["flag","다시 보기 단어"],["rand","배운 단어 무작위"]].map(([k,v])=>`<button class="chip" data-dsrc="${k}" aria-pressed="${sp.dsrc===k}">${v}</button>`).join("")}</div>
     <div class="row"><button class="btn primary" id="dlMake">대화 만들기</button><span class="note">배운 단어 2~4개를 넣어 4~6줄로 만들어요.</span></div></div>
     ${sp.derr?`<p class="note err">${esc(sp.derr)}</p>`:""}
-    <h2 style="margin:16px 0 6px;font-size:1rem">저장한 대화 ${mine.length}개</h2>
-    ${mine.length?`<div class="list">${mine.map(x=>`<div class="lrow"><button data-dlopen="${x.id}"><span class="meta"><b>${esc(x.title)}</b> <span class="note">${esc(x.scene)}</span></span><span class="note">${new Date(x.at||0).toLocaleDateString("ko-KR",{month:"numeric",day:"numeric"})}</span></button></div>`).join("")}</div>`:`<p class="note">아직 만든 대화가 없어요.</p>`}
-  </div>`;
+  </div>`;return;}
+  if(sp.dv==="paste"){
+    box.innerHTML=`<div class="panel">${head}<div class="row"><button class="btn" id="dlBack">← 대화 목록</button></div>
+      <h2 class="srch" style="margin:0">대화문 붙여 넣기</h2>
+      <p class="note" style="margin:0">한 줄에 한 사람씩 <b>이름: 대사</b> 로 적어 주세요. 해석은 같은 줄에 <b>/</b> 뒤에 쓰거나, 다음 줄에 한국어로 적어도 돼요. 등장인물은 두 명까지 A·B로 나뉘어요.</p>
+      <label class="freeline"><span class="note">제목</span><input id="dpTitle" placeholder="예: 납기 연장 부탁하기" value="${esc(sp.dpTitle||"")}"></label>
+      <div class="row"><span class="lbl">종류</span><button class="chip" data-dpdeck="work" aria-pressed="${(sp.dpDeck||"work")==="work"}">업무</button><button class="chip" data-dpdeck="daily" aria-pressed="${sp.dpDeck==="daily"}">일상</button></div>
+      <textarea id="dpText" lang="ja" style="min-height:180px" placeholder="田中: 来週の会議、何時からでしたっけ？ / 다음 주 회의 몇 시부터였죠?&#10;キム: 10時からです。&#10;10시부터예요.">${esc(sp.dpText||"")}</textarea>
+      <div class="row"><button class="btn primary" id="dpSave">대화로 저장</button><span class="note" id="dpMsg">${esc(sp.dpMsg||"")}</span></div></div>`;
+    return;
+  }
+  if(sp.dv==="view"){
+    const dl=dialogs.find(x=>x.id===sp.dcur);if(!dl){sp.dv="list";return renderDlg();}
+    if(settings.lastDlg!==dl.id){settings.lastDlg=dl.id;setMeta("settings",settings);}
+    box.innerHTML=`<div class="panel">${head}<div class="row" style="justify-content:space-between"><button class="btn" id="dlBack">← 대화 목록</button><button class="btn dlfav" data-dfav="${dl.id}" aria-pressed="${!!dl.fav}">${dl.fav?"★ 즐겨찾기":"☆ 즐겨찾기"}</button></div>${dlgHtml(dl)}
+      <div class="row"><button class="btn primary" data-dlgo="shadow:${dl.id}">이 대화로 따라 말하기</button><button class="btn" data-dlgo="word:${dl.id}">이 대화 듣기</button></div>
+      <div class="row">${sample?`<button class="btn" id="dlAgain">같은 단어로 다른 대화</button>`:""}<button class="btn danger" data-dldel="${dl.id}">삭제</button></div></div>`;
+    return;
+  }
+  const F=sp.dfilter||"all";
+  const list=dialogs.filter(x=>F==="all"||(F==="fav"?x.fav:(x.deck||"work")===F)).sort((a,b)=>(!!b.fav-!!a.fav)||((b.at||0)-(a.at||0)));
+  const sel=sp.dsel.filter(id=>dialogs.some(d=>d.id===id));sp.dsel=sel;
+  const nFav=dialogs.filter(x=>x.fav).length;
+  box.innerHTML=`<div class="panel">${head}
+    <div class="seg seg4" role="group" aria-label="대화 고르기">${[["all","전체"],["fav","★ "+nFav],["work","업무"],["daily","일상"]].map(([k,v])=>`<button data-dfilter="${k}" aria-pressed="${F===k}">${v}</button>`).join("")}</div>
+    <p class="note" style="margin:0">제목을 누르면 대화 전체를 볼 수 있어요. 왼쪽 동그라미로 여러 개 골라 한꺼번에 따라 말하기·듣기를 할 수 있어요.</p>
+    ${list.length?`<div class="dlist">${list.map(x=>{const on=sel.includes(x.id),first=(x.lines&&x.lines[0])?plainJa(x.lines[0].src):"",st=dlgState(x);
+      return `<div class="dcard${on?" on":""}"><button class="dsel" data-dsel="${x.id}" aria-pressed="${on}" aria-label="${esc(x.title)} 고르기">${on?"✓":""}</button>
+        <button class="dbody" data-dlopen="${x.id}"><b>${esc(x.title)}</b><span class="dprev" lang="ja">${esc(first)}</span><span class="note">${(x.deck||"work")==="daily"?"일상":"업무"} · ${(x.lines||[]).length}줄${st?` · ${st}`:""}</span></button>
+        <button class="dfav" data-dfav="${x.id}" aria-pressed="${!!x.fav}" aria-label="즐겨찾기">${x.fav?"★":"☆"}</button></div>`;}).join("")}</div>`
+      :`<p class="note">${F==="fav"?"즐겨찾기한 대화가 없어요. 대화의 ☆를 누르면 여기 모여요.":"아직 대화가 없어요."}</p>`}
+    <div class="row dladd"><button class="btn" id="dlPaste">+ 대화문 붙여 넣기</button>${sample?`<button class="btn" id="dlNew">+ Claude로 새로 만들기</button>`:""}</div>
+  </div>
+  ${sel.length?`<div class="dselbar"><span><b>${sel.length}개</b> 골랐어요</span><button class="btn primary" data-dlgo="shadow:${sel.join(",")}">따라 말하기</button><button class="btn" data-dlgo="word:${sel.join(",")}">듣기</button><button class="mini" id="dselClear">해제</button></div>`:""}`;
 }
 const addingExpr={},addedExpr={};
 async function addExpression(expr,deck,ctxLine){
@@ -1875,6 +1945,16 @@ function dlgClick(t,d){
   if(d.addpt!==undefined){const dl=dialogs.find(x=>x.id===sp.dcur);const pt=dl?.points?.[+d.addpt];if(pt)addExpression(pt.ja,dl.deck);return true;}
   if(d.spgo==="dlg"){sp.mode="dlg";sp.dv="list";sp.derr="";renderSpeak();return true;}
   if(sp.mode!=="dlg")return false;
+  if(d.dfilter){sp.dfilter=d.dfilter;renderDlg();return true;}
+  if(d.dsel){const i=sp.dsel.indexOf(d.dsel);if(i>=0)sp.dsel.splice(i,1);else sp.dsel.push(d.dsel);renderDlg();return true;}
+  if(t.id==="dselClear"){sp.dsel=[];renderDlg();return true;}
+  if(d.dfav){const dl=dialogs.find(x=>x.id===d.dfav);if(dl){dl.fav=!dl.fav;db.collection("dialogs").doc(dl.id).update({fav:dl.fav}).catch(()=>{});renderDlg();}return true;}
+  if(d.dlgo){const [k,ids]=d.dlgo.split(":");lsOpenWith(k==="word"?"word":"shadow",ids.split(","));return true;}
+  if(t.id==="dlHide"){sp.dhide=!sp.dhide;sp.dshow={};renderDlg();return true;}
+  if(t.id==="dlNew"){sp.dv="new";renderDlg();return true;}
+  if(t.id==="dlPaste"){sp.dv="paste";sp.dpMsg="";renderDlg();return true;}
+  if(d.dpdeck){sp.dpTitle=$("dpTitle")?.value||"";sp.dpText=$("dpText")?.value||"";sp.dpDeck=d.dpdeck;renderDlg();return true;}
+  if(t.id==="dpSave"){dlgPasteSave();return true;}
   if(d.dscene!==undefined){sp.dscene=d.dscene;sp.dfree="";renderDlg();return true;}
   if(d.dscope){sp.dscope=d.dscope;sp.dcat="";sp.dscene="";sp.dwho="";sp.dmood="";sp.dform="";renderDlg();return true;}
   if(d.dcat!==undefined){sp.dcat=d.dcat;sp.dscene="";sp.dfree="";renderDlg();return true;}
@@ -1884,8 +1964,8 @@ function dlgClick(t,d){
   if(d.dsrc){sp.dsrc=d.dsrc;renderDlg();return true;}
   if(t.id==="dlWordsClear"){sp.dwords=null;renderDlg();return true;}
   if(t.id==="dlMake"){sp.dfree=($("dlFree")?.value||"").trim();dlgCreate();return true;}
-  if(d.dlopen){sp.dcur=d.dlopen;sp.dv="view";sp.drole=null;sp.dshow={};renderDlg();return true;}
-  if(t.id==="dlBack"){speechSynthesis?.cancel?.();dlgPlay=null;sp.dv="list";renderDlg();return true;}
+  if(d.dlopen){sp.dcur=d.dlopen;sp.dv="view";sp.drole=null;sp.dshow={};renderDlg();window.scrollTo(0,0);return true;}
+  if(t.id==="dlBack"){speechSynthesis?.cancel?.();dlgPlay=null;sp.dv="list";sp.dhide=false;renderDlg();window.scrollTo(0,0);return true;}
   if(t.id==="dlAgain"){const dl=dialogs.find(x=>x.id===sp.dcur);sp.dwords=dl?dl.wordIds:null;sp.dscene="";sp.dfree="";dlgCreate();return true;}
   if(t.id==="dlPlay"){const dl=dialogs.find(x=>x.id===sp.dcur);if(dl)dlgSpeakAll(dl.lines);return true;}
   if(d.drole){sp.drole=sp.drole===d.drole?null:d.drole;sp.dshow={};renderDlg();return true;}
@@ -1895,6 +1975,34 @@ function dlgClick(t,d){
   if(d.dldel){const id=d.dldel,old=dialogs.find(x=>x.id===id);dialogs=dialogs.filter(x=>x.id!==id);db.collection("dialogs").doc(id).delete().catch(()=>{});sp.dv="list";renderDlg();
     toast("대화를 삭제했어요.","되돌리기",()=>{if(old){const {id:_,...doc}=old;dialogs=[old,...dialogs];db.collection("dialogs").doc(id).set(doc).catch(()=>{});renderSpeak();}});return true;}
   return false;
+}
+function parseDialogText(text){
+  const rows=String(text||"").replace(/\r/g,"").split("\n").map(x=>x.trim()).filter(Boolean);
+  const names=[],lines=[];
+  for(const row of rows){
+    const m=row.match(/^([^:：\s]{1,12})\s*[:：]\s*(.+)$/);
+    if(m&&JPCH.test(m[2])){
+      let who=m[1];if(!names.includes(who))names.push(who);
+      let [ja,ko]=m[2].split(/\s+[\/／]\s+|\s*[｜|]\s*/);
+      lines.push({name:who,ja:(ja||"").trim(),ko:(ko||"").trim()});
+    }else if(lines.length&&HANGUL.test(row)&&!JPCH.test(row.replace(/[A-Za-z]/g,""))&&!lines[lines.length-1].ko){lines[lines.length-1].ko=row;}
+    else if(lines.length&&JPCH.test(row)&&!HANGUL.test(row)){lines[lines.length-1].ja+=row;}
+  }
+  return {names,lines};
+}
+async function dlgPasteSave(){
+  const title=($("dpTitle")?.value||"").trim(),text=$("dpText")?.value||"";sp.dpTitle=title;sp.dpText=text;
+  const p=parseDialogText(text);
+  if(p.lines.length<2){sp.dpMsg="두 줄 이상, '이름: 대사' 형식으로 적어 주세요.";renderDlg();return;}
+  $("dpSave").disabled=true;$("dpMsg").textContent="저장하는 중…";
+  const srcs=await rubyBatch(p.lines.map(l=>({ja:l.ja,jr:""})));
+  let kos=p.lines.map(l=>l.ko);
+  if(sample&&kos.some(k=>!k)){try{const o=await sample.json(`다음 일본어 대화의 각 줄을 자연스러운 한국어로 번역하세요. JSON 문자열 배열만 출력하세요(줄 수 ${p.lines.length}개).\n${p.lines.map(l=>l.ja).join("\n")}`,{modelTier:"default"});if(Array.isArray(o))kos=kos.map((k,i)=>k||String(o[i]||""));}catch(_){}}
+  const nm=p.names.slice(0,2);
+  const doc={title:title||plainJa(p.lines[0].ja).slice(0,18),scene:title||"붙여 넣은 대화",deck:sp.dpDeck==="daily"?"daily":"work",cond:"",roles:{A:nm[0]||"A",B:nm[1]||"B"},level:"",
+    lines:p.lines.map((l,i)=>({who:p.names.indexOf(l.name)%2?"B":"A",src:srcs[i],ko:kos[i]||""})),points:[],wordIds:[],at:Date.now()};
+  try{const ref=db.collection("dialogs").doc();await ref.set(doc);sp.dpText="";sp.dpTitle="";sp.dpMsg="";sp.dcur=ref.id;sp.dv="view";toast("대화를 저장했어요.");renderDlg();}
+  catch(_){sp.dpMsg="저장하지 못했어요. 다시 눌러 주세요.";renderDlg();}
 }
 function openDlgWith(ids){sp.mode="dlg";sp.dv="list";sp.dwords=ids.slice(0,4);sp.dscene="";sp.derr="";setTab("speak");dlgCreate();}
 
@@ -2250,6 +2358,15 @@ yomi에는 주어진 한자 낱말 각각의 이 문장 속 읽기를 히라가�
   renderScan();toast(`${w.w}의 예문으로 넣었어요.`);
 }
 
+/* 예전에 넣은 교재 표시(과 번호 등)를 지움: 한 번만 */
+let bookLabelsCleaned=false;
+function cleanBookLabels(){
+  if(bookLabelsCleaned||!loaded)return;bookLabelsCleaned=true;
+  const RX=/^회화 교재( \d+과)?$/;
+  words.forEach(w=>{const u={};if(RX.test(String(w.note||"")))u.note="";if(RX.test(String(w.sit||"")))u.sit="";if(Object.keys(u).length){Object.assign(w,u);writeWord(w.id,u);}});
+  dialogs.forEach(d=>{const u={};const t=String(d.title||"").replace(/^\d+과\s*·\s*/,"");if(t!==d.title)u.title=t;if(d.cond==="회화 교재")u.cond="";
+    if(Object.keys(u).length){Object.assign(d,u);db.collection("dialogs").doc(d.id).update(u).catch(()=>{});}});
+}
 /* 백업·복원 */
 const FIELDS=["w","r","m","kr","c","deck","jl","col","cr","cm","ja","jr","ko","exs","note","g","chk","flag","mark","lv","due","lastOk","first","seen","n","done","tri","kind","sit"];
 function backupData(kind){
@@ -2319,19 +2436,22 @@ function setTab(t){
 ["today","book","speak","manage"].forEach(k=>$("tab-"+k).onclick=()=>{if(k==="today"&&state.tab==="today"&&quiz.phase!=="home"){leaveQuiz();return;}setTab(k);});
 /* 문제 풀다가 처음 화면으로: 푼 데까지 저장하고 오늘 화면으로. '오늘' 탭을 한 번 더 누르거나 제목을 눌러도 같음 */
 function quizHistOut(){}
-function leaveQuiz(){
-  if(quiz.phase==="done"){quiz.phase="home";if(state.tab!=="today")setTab("today");else renderToday();window.scrollTo(0,0);return;}
-  if(quiz.phase==="triage"){quiz.phase="home";if(state.tab!=="today")setTab("today");else renderToday();window.scrollTo(0,0);if(tri.known||tri.unknown)toast(`알아요 ${tri.known}개를 암기 완료로 넘겼어요. 나머지는 다음에 이어서 분류할 수 있어요.`);return;}
+function leaveQuiz(toHome){ // toHome: "처음으로" 버튼·제목 → 바로 처음 화면, 뒤로 가기 → 한 단계 위(자료 화면)
+  if(toHome&&quiz.phase!=="play"&&quiz.phase!=="home"){quiz.src=null;}
+  if(quiz.phase==="src"){quiz.phase="home";quiz.src=null;if(state.tab!=="today")setTab("today");else renderToday();window.scrollTo(0,0);return;}
+  if(quiz.phase==="done"){quiz.phase=quiz.src?"src":"home";if(state.tab!=="today")setTab("today");else renderToday();window.scrollTo(0,0);return;}
+  if(quiz.phase==="triage"){quiz.phase=quiz.src?"src":"home";if(state.tab!=="today")setTab("today");else renderToday();window.scrollTo(0,0);if(tri.known||tri.unknown)toast(`알아요 ${tri.known}개를 암기 완료로 넘겼어요. 나머지는 다음에 이어서 분류할 수 있어요.`);return;}
   if(quiz.phase!=="play"){if(state.tab!=="today")setTab("today");return;}
   const answered=quiz.items.some(q=>q.result!==undefined),left=quiz.items.some(q=>!itemDone(q));
   if(left)saveSessionNow();else clearSession();
-  quiz.phase="home";quiz.doneSaved=true;
+  if(toHome)quiz.src=null;
+  quiz.phase=quiz.src?"src":"home";quiz.doneSaved=true;
   if(state.tab!=="today")setTab("today");else renderToday();
   window.scrollTo(0,0);
   if(answered)toast(left?"푼 데까지 저장했어요. '이어서 풀기'로 계속할 수 있어요.":"다 풀었어요.","결과 보기",()=>{quiz.phase="done";quiz.doneSaved=false;renderToday();});
 }
 document.querySelector("h1")?.classList.add("tohome");
-document.querySelector("h1")?.addEventListener("click",()=>{if(quiz.phase!=="home")leaveQuiz();else if(state.tab!=="today")setTab("today");});
+document.querySelector("h1")?.addEventListener("click",()=>{if(quiz.phase!=="home")leaveQuiz(true);else if(state.tab!=="today")setTab("today");});
 /* 단독 실행(홈 화면 앱·브라우저)에서 휴대폰 뒤로 가기 = 한 단계씩 닫기:
    종료 확인 창 → 듣기 연습·설정 창 → 풀던 문제 → 다른 탭 → (오늘 처음 화면) "종료할까요?"
    휴대폰 브라우저(Chrome·삼성 인터넷)는 화면을 누르지 않고 만든 뒤로 가기 기록이나, 뒤로 가기 직후 만든 기록을 건너뛰어 버리므로
@@ -2402,6 +2522,7 @@ document.addEventListener("click",e=>{if(furiMode!=="tap")return;const r=e.targe
 document.addEventListener("click",async e=>{
   const t=e.target.closest("button");if(!t)return;const d=t.dataset;
   if(!$("listen").hidden){if(t.closest("#listen"))lsClick(t,d);return;}
+  if(quiz.phase==="home"&&state.tab==="today"&&["goFlag","goLeech","goListenT"].includes(t.id)&&(quiz.deck!=="all"||quiz.cats.length)){quiz.src=null;quiz.deck="all";quiz.cats=[];saveScope();} // 처음 화면의 연습은 모든 자료에서
   if(t.id==="goListenT"){lsOpen();return;}
   if(state.tab==="speak"&&spClick(t,d))return;
   if(t.id==="goDlg"){const its=quiz.items.filter(q=>q.type!=="intro"&&q.result!==undefined);const ids=[...new Set([...its.filter(q=>!q.result),...shuffle(its.filter(q=>q.result))].map(q=>q.w.id))];openDlgWith(ids.slice(0,3));return;}
@@ -2431,6 +2552,14 @@ document.addEventListener("click",async e=>{
   if(d.calm){const [yy,mm]=(state.calMonth||today().slice(0,7)).split("-").map(Number);const nd=new Date(yy,mm-1+(+d.calm),1);state.calMonth=`${nd.getFullYear()}-${String(nd.getMonth()+1).padStart(2,"0")}`;state.calDay=null;renderToday();return;}
   if(t.id==="goLeech"){startSession("leech");return;}
   if(t.id==="goTriage"){triStart();return;}
+  if(d.src){srcGo(d.src);return;}
+  if(t.id==="srcBack"){leaveQuiz();return;}
+  if(t.id==="goReview"){quiz.src=null;quiz.deck="all";quiz.cats=[];saveScope();startSession("review");return;}
+  if(t.id==="goMoreNew"){startSession("new");return;}
+  if(t.id==="goListenC"){lsOpen();return;}
+  if(t.id==="srcBook"){const sd=SRC_DEF.find(x=>x.k===quiz.src),cs=sd?sd.cats():[];state.deck=sd?sd.deck:"all";state.cat=cs.length===1?cs[0]:"all";state.filter="all";state.jl="all";state.idx=0;state.flipped=false;state.shuffled=null;setTab("book");return;}
+  if(t.id==="srcListen"){ls.pick=null;lsOpt.kind="word";lsOpt.src="auto";lsOpen();return;}
+  if(t.id==="srcShadow"){ls.pick=null;lsOpt.kind="shadow";lsOpt.sm="auto";lsOpen();return;}
   if(t.id==="triYes"){triMark(true);return;}
   if(t.id==="triNo"){triMark(false);return;}
   if(t.id==="triUndo"){triUndo();return;}
@@ -2451,8 +2580,8 @@ document.addEventListener("click",async e=>{
   if(t.id==="goResume"){resumeSession();return;}
   if(t.id==="goResumeCur"){const f=quiz.items.findIndex(q=>!itemDone(q));quiz.i=f<0?0:f;quiz.phase="play";renderToday();return;}
   if(t.id==="dropResume"){clearSession();renderToday();toast("묶음을 닫았어요. 푼 기록은 그대로이고, 남은 단어는 다음에 새 묶음으로 나와요.");return;}
-  if(t.id==="qstop"){leaveQuiz();return;}
-  if(t.id==="qhome"){quiz.phase="home";quizHistOut();renderToday();window.scrollTo(0,0);return;}
+  if(t.id==="qstop"){leaveQuiz(true);return;}
+  if(t.id==="qhome"){quiz.src=null;quiz.phase="home";quizHistOut();renderToday();window.scrollTo(0,0);return;}
   if(t.id==="qintro"){introDone();return;}
   if(d.done){const w=words.find(x=>x.id===d.done);if(w){setDone(w,!w.done);rerender();}return;}
   if(t.id==="qnext"){next();return;}
@@ -2584,6 +2713,10 @@ function shSentPool(exprOnly,withExpr){
 }
 function shPlan(){
   const src=lsOpt.sm||"auto",t=today(),all=shMeta.sets||{},skip=shSkip();
+  if(ls.pick&&ls.pick.length){ // 상황 대화 화면에서 고른 대화만, 고른 순서대로
+    return ls.pick.map(id=>dialogs.find(d=>d.id===id)).filter(d=>d&&Array.isArray(d.lines)&&d.lines.length>=2).map(d=>{const old=all["d:"+d.id];
+      return {id:"d:"+d.id,title:d.title||"상황 대화",kind:"dlg",sids:d.lines.slice(0,8).map((_,i)=>`d:${d.id}:${i}`).filter(x=>!skip.has(x)),review:!!old};}).filter(x=>x.sids.length);
+  }
   const fit=s=>src==="auto"||(src==="dlg")===(s.kind==="dlg");
   const mkOld=([id,s])=>({id,title:s.title,kind:s.kind,sids:(s.sids||[]).filter(x=>!skip.has(x)),review:true});
   const due=Object.entries(all).filter(([id,s])=>s.next&&s.next<=t&&fit(s)).sort((a,b)=>a[1].next<b[1].next?-1:1).map(mkOld);
@@ -2743,9 +2876,10 @@ const lsDur=it=>lsSteps(it).reduce((t,s)=>t+(s.wait?s.wait/1000:s.say?(s.lang===
 function lsBuild(){
   if(lsOpt.kind==="shadow")return shBuild();
   const goal=lsOpt.min*60,q=[];let t=0;ls.note="";
-  if(lsOpt.src==="dlg"){
-    const ds=dialogs.filter(d=>Array.isArray(d.lines)&&d.lines.length);
-    for(let r=0;r<3&&ds.length&&t<goal;r++)for(const d of shuffle(ds)){
+  if(lsOpt.src==="dlg"||(ls.pick&&ls.pick.length)){
+    const picked=ls.pick&&ls.pick.length?ls.pick.map(id=>dialogs.find(d=>d.id===id)).filter(Boolean):null;
+    const ds=(picked||dialogs).filter(d=>Array.isArray(d.lines)&&d.lines.length);
+    for(let r=0;r<3&&ds.length&&t<goal;r++)for(const d of picked?ds:shuffle(ds)){
       d.lines.forEach((l,li)=>{const it={k:"d",id:d.id,li,last:li===d.lines.length-1};q.push(it);t+=lsDur(it);});
       if(t>=goal)break;}
     return q;
@@ -2836,9 +2970,10 @@ function lsFinish(){
   ls.checked=ls.flagged.slice();ls.view="done";ls.allDone=true;lsDraw();
 }
 function lsStop(){lsPause();lsWakeOff();lsLog();ls.checked=ls.flagged.slice();ls.allDone=false;ls.view="done";lsDraw();}
+function lsOpenWith(kind,ids){ls.pick=ids.slice();lsOpt.kind=kind;if(kind==="word")lsOpt.src="dlg";else lsOpt.sm="dlg";$("listen").hidden=false;ls.view="setup";pushLayer("ls");document.documentElement.classList.add("lsn-on");lsDraw();}
 function lsOpen(){ls.view="setup";$("listen").hidden=false;pushLayer("ls");document.documentElement.classList.add("lsn-on");lsDraw();
   clearInterval(lsTick);lsTick=setInterval(()=>{if(ls.view==="play"&&ls.playing)lsDrawTop();},5000);}
-function lsClose(){if(ls.playing)lsPause();lsWakeOff();lsLog();clearInterval(lsTick);$("listen").hidden=true;document.documentElement.classList.remove("lsn-on");ls.view="setup";if(state.tab==="today")renderToday();}
+function lsClose(){ls.pick=null;if(ls.playing)lsPause();lsWakeOff();lsLog();clearInterval(lsTick);$("listen").hidden=true;document.documentElement.classList.remove("lsn-on");ls.view="setup";if(state.tab==="today")renderToday();}
 function lsSetFlag(id,on){
   const w=words.find(x=>x.id===id);if(!w)return;
   if(on&&!flagOf(w)){w.flag=true;w.mark="warn";writeWord(w.id,{flag:true,mark:"warn"});ls.added.push(id);}
@@ -2877,6 +3012,10 @@ function lsSetupHtml(){
     const uniq=new Set(q.map(it=>it.id)).size;
     pre=!q.length?`<p class="note err" style="margin:0">이 범위에는 들을 ${lsOpt.src==="dlg"?"대화가":"단어가"} 없어요. 다른 범위를 골라 주세요.</p>`
       :`<p class="lsn-pre"><b>${fmtMin(sec)}</b> · ${lsOpt.src==="dlg"?`대화 ${uniq}개 (${q.length}문장)`:`단어 ${uniq}개${q.length>uniq?` · 모자라서 ${Math.ceil(q.length/uniq)}바퀴 돌아요`:""}`}</p>${ls.note?`<p class="note" style="margin:0">${esc(ls.note)}</p>`:""}`;
+  }
+  if(ls.pick&&ls.pick.length){
+    const names=ls.pick.map(id=>dialogs.find(d=>d.id===id)).filter(Boolean).map(d=>d.title);
+    srcRow=`<div class="lsn-grp"><span class="lbl">고른 상황 대화 ${names.length}개</span><span class="note">${names.map(esc).join(" · ")}</span><div class="row"><button class="chip" data-lsunpick="1">고른 것 풀고 추천 순서로</button></div></div>`;
   }
   const rs=lsResumable();
   const rsKind=rs&&rs.q[0]&&rs.q[0].k==="s"?"따라 말하기":"단어 복습";
@@ -2962,6 +3101,7 @@ function lsDoneHtml(){
   </div>`;
 }
 function lsClick(t,d){
+  if(d.lsunpick){ls.pick=null;lsDraw();return;}
   if(d.lsclose){lsClose();return true;}
   if(d.shhard){shToggleHard(d.shhard);lsDraw();return true;}
   if(d.shskip){shToggleSkip(d.shskip);lsDraw();return true;}
@@ -3027,6 +3167,7 @@ applyFuri();
     const prev=new Map(words.map(w=>[w.id,w]));
     words=snap.docs.map(s=>{const o=prev.get(s.id);const fresh={id:s.id,...plain(s.data())};if(o){Object.keys(o).forEach(k=>{if(!(k in fresh)&&k!=="id")delete o[k];});return Object.assign(o,fresh);}return fresh;});
     if(!snap.metadata.fromCache||words.length) loaded=true;
+    if(loaded&&!bookLabelsCleaned)setTimeout(cleanBookLabels,1500);
     if(state.tab==="today"){if(quiz.phase!=="play")renderToday();}else rerender();
   },()=>{$("today").innerHTML='<div class="panel"><div class="empty">단어 목록 연결이 끊겼어요. 페이지를 새로 열어 주세요.</div></div>';});
 })();
