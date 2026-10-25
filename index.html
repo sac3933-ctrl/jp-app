@@ -288,7 +288,7 @@ textarea{min-height:76px;font-family:var(--f-jp);resize:vertical}
 .mrow .meta{min-width:0}
 .mrow .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:end}
 .mrow.editing{grid-template-columns:minmax(0,1fr)}
-.mlist{display:grid;gap:6px}
+.mlist{display:grid;gap:6px}.mfold>summary{cursor:pointer;list-style:none}.mfold>summary::-webkit-details-marker{display:none}.mfold>summary::before{content:"▸ ";color:var(--muted,#888)}.mfold[open]>summary::before{content:"▾ "}.mfold[open]>summary{margin-bottom:10px}
 .toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);border-radius:10px;padding:10px 14px;display:flex;gap:12px;align-items:center;font-size:.88rem;max-width:calc(100% - 32px);z-index:20;box-shadow:0 6px 20px rgba(0,0,0,.18)}
 .toast button{font:inherit;font-weight:600;background:transparent;border:0;color:var(--accent-soft);cursor:pointer;text-decoration:underline}
 @media (max-width:560px){
@@ -565,6 +565,7 @@ html[data-furi] .lsn-play .lsn-hid rt,html[data-furi] .lsn-play .lsn-hid ruby rt
     throw{code:"invalid_json",message:"JSON을 읽지 못했어요"};
   }
   function makeSample(){
+    return null; // 유료 API는 쓰지 않음 (Claude 기능은 아티팩트판에서만)
     const key=ls.get(APIKEY);if(!key)return null;
     async function call(input,opts={}){
       const messages=typeof input==="string"?[{role:"user",content:input}]:input;
@@ -669,7 +670,7 @@ html[data-furi] .lsn-play .lsn-hid rt,html[data-furi] .lsn-play .lsn-hid ruby rt
   <section id="manage" hidden>
     <div class="panel">
       <h2>새 단어 추가</h2>
-      <p class="note" style="margin:0">한 줄에 하나씩 입력하거나 txt 파일을 불러오세요. 이미 있는 단어는 건너뛰어요.<span class="ai-only"> <b>자동으로 채우기</b>를 누르면 Claude가 읽기·뜻·예문·짝꿍 표현을 채워서 바로 넣어요.<br><b>한국어 뜻</b>으로 적으면(예: 회의록, 납기 지연) 일본어 후보를 보여 드리고, 고른 단어만 넣어요.</span><span class="ai-off"> 설정에서 내 Anthropic API 키를 넣으면 자동으로 채우기도 쓸 수 있어요.</span></p>
+      <p class="note" style="margin:0">한 줄에 하나씩 입력하거나 txt 파일을 불러오세요. 이미 있는 단어는 건너뛰어요.<span class="ai-only"> <b>자동으로 채우기</b>를 누르면 Claude가 읽기·뜻·예문·짝꿍 표현을 채워서 바로 넣어요.<br><b>한국어 뜻</b>으로 적으면(예: 회의록, 납기 지연) 일본어 후보를 보여 드리고, 고른 단어만 넣어요.</span></p>
       <div class="row"><span class="lbl">넣을 곳</span><button class="chip" data-ad="work" aria-pressed="true">업무 단어</button><button class="chip" data-ad="daily" aria-pressed="false">일상 단어</button></div>
       <textarea id="newWords" aria-label="추가할 단어" placeholder="例) 歩留まり&#10;洗浄&#10;회의록  ← 한국어 뜻도 돼요"></textarea>
       <div class="row">
@@ -707,11 +708,11 @@ html[data-furi] .lsn-play .lsn-hid rt,html[data-furi] .lsn-play .lsn-hid ruby rt
       <textarea id="bkText" readonly hidden aria-label="백업 내용" style="min-height:120px;font-family:ui-monospace,monospace;font-size:.75rem"></textarea>
     </div>
 
-    <div class="panel">
-      <h2>등록된 단어 <span class="note" id="mCount"></span></h2>
+    <details class="panel mfold" id="mFold">
+      <summary><h2 style="display:inline">단어 관리 <span class="note" id="mCount"></span></h2><span class="note"> · 찾기·수정·삭제</span></summary>
       <div class="row"><input id="search" type="search" placeholder="단어·읽기·뜻으로 찾기" aria-label="단어 찾기" style="flex:1 1 200px"><button class="chip" id="onlyUnchk" aria-pressed="false">확인 전만</button></div>
       <div class="mlist" id="mlist"></div>
-    </div>
+    </details>
   </section>
 </div>
 <div class="toast" id="toast" hidden role="status"></div>
@@ -1614,23 +1615,17 @@ function renderToday(){
 }
 function renderSettings(){
   const b=$("setBody");if(!b)return;
-  b.innerHTML=`<div class="setrow"><span class="lbl">공부 범위</span><div class="row"><span>${esc(scopeLabel())} (${scopeN()}개)</span><button class="btn" id="openScope2">바꾸기</button></div><span class="note">오늘 화면 맨 위 '공부 범위'를 눌러도 바꿀 수 있어요.</span></div>
+  b.innerHTML=`<div class="setrow"><span class="lbl">공부 범위</span><div class="row"><span>${esc(scopeLabel())} (${scopeN()}개)</span><button class="btn" id="openScope2">바꾸기</button></div><span class="note">듣기·따라 말하기·말로 답하기에 쓸 자료 범위예요.</span></div>
     <div class="setrow"><span class="lbl">화면 테마</span><div class="row">${[["auto","기기 설정 따라"],["light","밝게"],["dark","어둡게"]].map(([k,v])=>`<button class="chip" data-themeset="${k}" aria-pressed="${themeMode===k}">${v}</button>`).join("")}</div></div>
     <div class="setrow"><span class="lbl">후리가나 (읽기 표시)</span><div class="row">${Object.entries(FURI).map(([k,v])=>`<button class="chip" data-furiset="${k}" aria-pressed="${furiMode===k}">${v}</button>`).join("")}</div><span class="note">눌러서 보기: 한자를 누르면 그 단어 읽기만 보여요. 한자 외울 때 좋아요.</span></div>
     <div class="setrow"><span class="lbl">하루 새 단어</span><div class="row">${[5,10,20,30].map(n=>`<button class="chip" data-np="${n}" aria-pressed="${settings.newPerDay===n}">${n}개</button>`).join("")}</div></div>
     <div class="setrow"><span class="lbl">하루 복습 상한</span><div class="row">${[20,40,60,999].map(n=>`<button class="chip" data-rc="${n}" aria-pressed="${(settings.reviewCap|0||40)===n}">${n===999?"제한 없음":n+"개"}</button>`).join("")}</div><span class="note">밀린 복습이 쌓여도 하루에 이만큼만 나와요. 넘치는 건 다음 날로 미뤄요.</span></div>
     <div class="setrow"><span class="lbl">한 번에 풀 단어</span><div class="row">${[10,20,30].map(n=>`<button class="chip" data-ss="${n}" aria-pressed="${settings.sessionSize===n}">${n}개</button>`).join("")}</div></div>
     <p class="note" style="margin:0">맞힐 때마다 다음 복습까지 1일 → 3일 → 7일 → 14일 → 30일로 간격이 늘어나고, 5칸이 된 뒤에도 맞히면 60일 → 120일 → 240일 → 1년으로 계속 늘어나요. 틀리면 한 칸 내려가고 다음 날 다시 나오며, 그날 안에는 다시 맞혀도 칸이 오르지 않아요.</p>
-    <div class="setrow"><span class="lbl">Claude 연결 (선택)</span>
-      <span class="note">없어도 단어 공부·복습·따라 말하기는 모두 쓸 수 있어요. 자동 채우기·예문 만들기·한국어 후보·SJPT 질문·상황 대화 만들기는 Claude가 필요해서, 내 Anthropic API 키를 넣어야 켜져요. 키는 <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic 콘솔</a>에서 만들 수 있고, 사용한 만큼 요금이 내 계정에 청구돼요. 키는 이 기기의 이 브라우저에만 저장되고 다른 곳으로 보내지지 않아요(Anthropic 서버로 요청할 때만 써요).</span>
-      ${window.__standalone?.hasKey()?`<div class="row"><span class="note">연결됨 · 모델 ${esc(window.__standalone.model())}</span><button class="btn" id="apiClear">키 지우기</button></div>`
-        :`<div class="row"><input id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-..." style="flex:1 1 200px;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)"><input id="apiModel" value="${esc(window.__standalone?.model()||"")}" style="flex:1 1 140px;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)" aria-label="모델"><button class="btn primary" id="apiSave">저장</button></div>`}
-    </div>
     <div class="setrow"><span class="lbl">다른 기기로 옮기기</span>
       <span class="note">이 파일은 기기마다 따로 저장돼요. 진행도·기록·대화까지 옮기려면 전체 데이터를 내보내서 다른 기기에서 가져오세요.</span>
       <div class="row"><button class="btn" id="allExport">전체 데이터 내보내기</button><label class="btn" for="allImport">전체 데이터 가져오기</label><input type="file" id="allImport" accept=".json,application/json" hidden></div>
-    </div>
-    <div class="setrow"><span class="lbl">백업</span><div class="row"><button class="btn" id="bkNow2">지금 백업하기</button><span class="note">${settings.lastBackup?`마지막 백업 ${settings.lastBackup}`:"아직 백업한 적이 없어요"}</span></div></div>`;
+    </div>`;
 }
 function renderScope(){
   const b=$("scopeBody");if(!b)return;const d=quiz.deck;
@@ -2121,8 +2116,7 @@ function renderDlg(){
   const box=$("speak"),deck=dlgDeck();
   const head=`<div class="qtop"><span>상황 대화</span><button class="mini" id="spHome">말하기 처음으로</button></div>`;
   if(sp.dv==="new"||sp.dbusy){if(sp.dbusy){box.innerHTML=`<div class="panel">${head}<div class="empty">대화를 만드는 중… (20~40초)</div></div>`;return;}
-  box.innerHTML=`<div class="panel">${head}<div class="row"><button class="btn" id="dlBack">← 대화 목록</button></div><h2 class="srch" style="margin:0">Claude로 새 대화 만들기</h2>
-    <p class="note ai-off">새 대화를 만들려면 설정에서 내 Anthropic API 키를 넣어 주세요. 저장된 대화는 그대로 볼 수 있어요. <button class="link" data-openset="1">설정 열기</button></p><div class="ai-only"><div class="seg seg2" role="group" aria-label="장면 종류"><button data-dscope="work" aria-pressed="${deck==="work"}">업무 장면</button><button data-dscope="daily" aria-pressed="${deck==="daily"}">일상 장면</button></div>
+  box.innerHTML=`<div class="panel">${head}<div class="row"><button class="btn" id="dlBack">← 대화 목록</button></div><h2 class="srch" style="margin:0">Claude로 새 대화 만들기</h2><div class="ai-only"><div class="seg seg2" role="group" aria-label="장면 종류"><button data-dscope="work" aria-pressed="${deck==="work"}">업무 장면</button><button data-dscope="daily" aria-pressed="${deck==="daily"}">일상 장면</button></div>
     <div class="dlstep"><span class="lbl">장면</span>
       <div class="row">${["",...Object.keys(DLG_SCENES[deck])].map(c=>`<button class="chip" data-dcat="${esc(c)}" aria-pressed="${sp.dcat===c&&!sp.dfree}">${c||"아무거나"}</button>`).join("")}</div>
       ${sp.dcat&&!sp.dfree?`<div class="row subchips"><button class="chip" data-dscene="" aria-pressed="${!sp.dscene}">이 중 아무거나</button>${DLG_SCENES[deck][sp.dcat].map(x=>`<button class="chip" data-dscene="${esc(x)}" aria-pressed="${sp.dscene===x}">${esc(x)}</button>`).join("")}</div>`:""}
@@ -2285,6 +2279,8 @@ function renderDrafts(){
 function renderManage(){
   if(!loaded) return;
   $("mCount").textContent=`${words.length}개`;
+  if(state.editing||state.q)$("mFold").open=true;
+  if(!$("mFold").open){$("mlist").innerHTML="";return;}
   const q=state.q.toLowerCase();
   const list=words.slice().sort((a,b)=>(b.n||0)-(a.n||0)).filter(w=>!state.onlyUnchk||w.chk===false).filter(w=>!q||[w.w,w.r,w.m].some(s=>String(s||"").toLowerCase().includes(q)));
   const shown=list.slice(0,state.mMax||60);
@@ -2648,11 +2644,18 @@ async function readRestore(file){
     const gAdd=(Array.isArray(data.groups)?data.groups:[]).filter(g=>g&&g.id&&!groups[g.id]);
     const dAdd=(Array.isArray(data.dialogs)?data.dialogs:[]).filter(d=>d&&d.id&&Array.isArray(d.lines)&&!dialogs.some(x=>x.id===d.id));
     const sAdd=(Array.isArray(data.sjpt)?data.sjpt:[]).filter(q=>q&&q.id&&q.q&&!sjpt.some(x=>x.id===q.id));
-    const sPic=(Array.isArray(data.sjpt)?data.sjpt:[]).filter(q=>q&&q.id&&q.svg&&sjpt.some(x=>x.id===q.id&&x.svg!==q.svg));
-    const gUpd=(Array.isArray(data.words)?data.words:[]).filter(w=>w&&w.kind==="gram"&&words.some(x=>x.id===w.id&&(!x.gt||(!x.cn&&w.cn))));
-    restorePlan={add,gAdd,dAdd,sAdd,sPic,gUpd,sjInfo:data.sjptInfo||null,kanji:data.kanji&&typeof data.kanji==="object"?data.kanji:null};
-    if(!add.length&&!gAdd.length&&!dAdd.length&&!sAdd.length&&!sPic.length&&!gUpd.length){$("bkMsg").textContent=`백업 파일의 단어 ${data.words.length}개가 모두 이미 있어요. 추가할 게 없어요.`;return;}
-    $("bkMsg").textContent=`백업 파일에서 지금 없는 단어 ${add.length}개${gAdd.length?`, 비슷한 말 묶음 ${gAdd.length}개`:""}${dAdd.length?`, 상황 대화 ${dAdd.length}개`:""}${sAdd.length?`, SJPT 문제 ${sAdd.length}개`:""}${sPic.length?`, SJPT 그림 ${sPic.length}개`:""}${gUpd.length?`, 문법 설명 보강 ${gUpd.length}개`:""}를 찾았어요. 이미 있는 단어는 건드리지 않아요.`;
+    // 내용 수정분: 파일이 "update":true일 때, 이미 있는 항목의 내용만 바꿈(진행도·즐겨찾기 등은 그대로)
+    const same=(x,y)=>JSON.stringify(x??null)===JSON.stringify(y??null);
+    const diffOf=(o,n,keys)=>{const u={};keys.forEach(k=>{if(n[k]!==undefined&&!same(o[k],n[k]))u[k]=n[k];});return Object.keys(u).length?u:null;};
+    const WK=["w","r","m","kr","col","cr","cm","ja","jr","ko","exs","note","cn","gt","gl","cmp","rx"],DK=["title","scene","roles","level","lines","points"],SK=["q","qko","scene","a1","a1ko","a2","a2ko","keys","tip","type","svg"];
+    const upd=data.update===true;
+    const wUpd=upd?(Array.isArray(data.words)?data.words:[]).map(w=>{const o=w&&words.find(x=>x.id===w.id);const u=o&&diffOf(o,w,WK);return u?{id:w.id,u}:null;}).filter(Boolean):[];
+    const dUpd=upd?(Array.isArray(data.dialogs)?data.dialogs:[]).map(d=>{const o=d&&dialogs.find(x=>x.id===d.id);const u=o&&diffOf(o,d,DK);return u?{id:d.id,u}:null;}).filter(Boolean):[];
+    const sUpd=(Array.isArray(data.sjpt)?data.sjpt:[]).map(q=>{const o=q&&sjpt.find(x=>x.id===q.id);const u=o&&diffOf(o,q,upd?SK:["svg"]);return u?{id:q.id,u}:null;}).filter(Boolean);
+    const gUpd=[];
+    restorePlan={add,gAdd,dAdd,sAdd,wUpd,dUpd,sUpd,gUpd,sjInfo:data.sjptInfo||null,kanji:data.kanji&&typeof data.kanji==="object"?data.kanji:null};
+    if(!add.length&&!gAdd.length&&!dAdd.length&&!sAdd.length&&!wUpd.length&&!dUpd.length&&!sUpd.length){$("bkMsg").textContent=`백업 파일의 단어 ${data.words.length}개가 모두 이미 있어요. 추가할 게 없어요.`;return;}
+    $("bkMsg").textContent=`백업 파일에서 지금 없는 단어 ${add.length}개${gAdd.length?`, 비슷한 말 묶음 ${gAdd.length}개`:""}${dAdd.length?`, 상황 대화 ${dAdd.length}개`:""}${sAdd.length?`, SJPT 문제 ${sAdd.length}개`:""}${wUpd.length+dUpd.length+sUpd.length?`, 내용 수정 ${wUpd.length+dUpd.length+sUpd.length}개`:""}를 찾았어요. ${wUpd.length+dUpd.length+sUpd.length?"진도·기록·즐겨찾기는 그대로 두고 내용만 고쳐요.":"이미 있는 단어는 건드리지 않아요."}`;
     $("restoreActs").hidden=false;
   }catch(_){$("bkMsg").className="note err";$("bkMsg").textContent="백업 파일을 읽지 못했어요. 이 단어장에서 받은 '전체 백업' 파일(.json)인지 확인해 주세요.";}
 }
@@ -2664,11 +2667,13 @@ async function doRestore(){
     for(const g of restorePlan.gAdd){const {id,...rest}=g;await db.doc("groups/"+id).set(rest);}
     for(const dl of restorePlan.dAdd||[]){const {id,...rest}=dl;await db.collection("dialogs").doc(id).set(rest);}
     for(const q of restorePlan.sAdd||[]){const {id,...rest}=q;await db.collection("sjpt").doc(id).set(rest);}
-    for(const q of restorePlan.sPic||[]){await db.collection("sjpt").doc(q.id).update({svg:q.svg});}
+    for(const x of restorePlan.wUpd||[]){await col.doc(x.id).update(x.u);}
+    for(const x of restorePlan.dUpd||[]){await db.collection("dialogs").doc(x.id).update(x.u);}
+    for(const x of restorePlan.sUpd||[]){await db.collection("sjpt").doc(x.id).update(x.u);}
     for(const g of restorePlan.gUpd||[]){const u={};["w","r","m","note","cn","gt","gl","cmp","rx","ja","jr","ko","exs"].forEach(k=>{if(g[k]!==undefined)u[k]=g[k];});await col.doc(g.id).update(u);}
     if(restorePlan.sjInfo)await db.doc("meta/sjpt").set(restorePlan.sjInfo);
     if(restorePlan.kanji){kk={...restorePlan.kanji,...kk};setMeta("kanji",{map:kk});}
-    $("bkMsg").textContent=`단어 ${n}개를 되살렸어요.`;
+    {const m=(restorePlan.wUpd||[]).length+(restorePlan.dUpd||[]).length+(restorePlan.sUpd||[]).length;$("bkMsg").textContent=`단어 ${n}개를 넣었어요.${m?` 내용 ${m}개를 고쳤어요.`:""}`;}
   }catch(_){$("bkMsg").className="note err";$("bkMsg").textContent=`${n}개까지 되살리고 멈췄어요. 다시 불러와서 이어서 할 수 있어요.`;}
   $("restoreActs").hidden=true;$("restoreGo").disabled=false;restorePlan=null;
 }
@@ -2770,6 +2775,7 @@ $("manual").onclick=()=>{syncDrafts();
   if(lines.length>1)$("fillMsg").textContent=`직접 입력은 한 번에 1개씩이에요. 나머지 ${lines.length-1}개는 입력칸에 남겨 뒀어요.`;};
 $("saveDrafts").onclick=async()=>{syncDrafts();$("saveDrafts").disabled=true;try{const ready=drafts.filter(d=>d.w.trim()),rest=drafts.filter(d=>!d.w.trim());const n=await saveWords(ready);drafts=rest;renderDrafts();$("fillMsg").className="note";$("fillMsg").textContent=(n?`추가했어요: ${ready.map(d=>d.w).join(", ")}.`:ready.length?"추가할 새 단어가 없어요.":"")+(rest.length?` 단어(일본어) 칸이 빈 ${rest.length}개는 남겨 뒀어요. 일본어를 적${sample?'거나 "Claude로 채우기"를 눌러':"어"} 주세요.`:"");}catch(_){$("fillMsg").className="note err";$("fillMsg").textContent="일부만 저장했어요. 다시 눌러 주세요.";}$("saveDrafts").disabled=false;};
 $("clearDrafts").onclick=()=>{drafts=[];renderDrafts();$("fillMsg").textContent="";};
+$("mFold").ontoggle=()=>renderManage();
 $("search").oninput=e=>{state.q=e.target.value;renderManage();};
 $("txtFile").onchange=async e=>{
   const f=e.target.files[0];if(!f)return;
