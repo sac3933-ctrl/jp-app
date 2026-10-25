@@ -600,7 +600,7 @@ html[data-furi] .lsn-play .lsn-hid rt,html[data-furi] .lsn-play .lsn-hid ruby rt
     if(t.id==="allExport")window.__standalone.exportAll();
   });
   // ---- 앱 설치·오프라인: 서비스 워커 등록, 저장 데이터가 지워지지 않게 요청 ----
-  if("serviceWorker" in navigator&&location.protocol.startsWith("http"))addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(e=>console.warn("서비스 워커 등록 실패",e)));
+  if("serviceWorker" in navigator&&location.protocol.startsWith("http"))addEventListener("load",()=>navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).then(r=>{try{r.update();}catch(_){}}).catch(e=>console.warn("서비스 워커 등록 실패",e)));
   try{navigator.storage?.persist?.().catch(()=>{});}catch(_){}
   // ---- 처음 열었을 때 안내: 홈 화면에 추가, 기록은 이 기기에만 저장 ----
   let installEvt=null;
@@ -1720,6 +1720,7 @@ function renderToday(){
     ${bkWarn?`<div class="bkline"><span>${bkDays===null?"아직 단어장을 백업한 적이 없어요.":`마지막 백업이 ${bkDays}일 전이에요.`}</span><button class="link" id="bkNow">지금 백업</button></div>`:""}`;
   const pm=$("progMore");if(pm)pm.ontoggle=e=>{state.progOpen=e.target.open;};
 }
+const APPV="10.25-6";
 function renderSettings(){
   const b=$("setBody");if(!b)return;
   b.innerHTML=`<div class="setrow"><span class="lbl">공부 범위</span><div class="row"><span>${esc(scopeLabel())} (${scopeN()}개)</span><button class="btn" id="openScope2">바꾸기</button></div><span class="note">듣기·따라 말하기·말로 답하기에 쓸 자료 범위예요.</span></div>
@@ -1733,7 +1734,8 @@ function renderSettings(){
     <div class="setrow"><span class="lbl">다른 기기로 옮기기</span>
       <span class="note">이 파일은 기기마다 따로 저장돼요. 진행도·기록·대화까지 옮기려면 전체 데이터를 내보내서 다른 기기에서 가져오세요.</span>
       <div class="row"><button class="btn" id="allExport">전체 데이터 내보내기</button><label class="btn" for="allImport">전체 데이터 가져오기</label><input type="file" id="allImport" accept=".json,application/json" hidden></div>
-    </div>`;
+    </div>
+    <p class="note" style="margin:8px 0 0;text-align:right">앱 버전 ${APPV}</p>`;
 }
 function renderScope(){
   const b=$("scopeBody");if(!b)return;const d=quiz.deck;
