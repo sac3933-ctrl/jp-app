@@ -288,7 +288,7 @@ textarea{min-height:76px;font-family:var(--f-jp);resize:vertical}
 .mrow .meta{min-width:0}
 .mrow .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:end}
 .mrow.editing{grid-template-columns:minmax(0,1fr)}
-.mlist{display:grid;gap:6px}.progline{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;width:100%;text-align:left;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);font:inherit;font-size:.9rem;cursor:pointer;margin:12px 0}.progline .prow-a{margin-left:auto}.dlwords>summary{cursor:pointer}.dlwords .chip.on{border-color:var(--accent)}.dlwords .chip.on::before{content:"● ";color:var(--accent);font-size:.7em}.dwcard{display:grid;gap:4px;padding:10px 12px;border-radius:10px;background:var(--bg);margin-top:8px}.mfold>summary{cursor:pointer;list-style:none}.mfold>summary::-webkit-details-marker{display:none}.mfold>summary::before{content:"▸ ";color:var(--muted,#888)}.mfold[open]>summary::before{content:"▾ "}.mfold[open]>summary{margin-bottom:10px}
+.mlist{display:grid;gap:6px}.s3{display:grid;gap:12px}.s3pills{display:flex;gap:6px}.s3p{font-size:.8rem;padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted,#888)}.s3p.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}.s3p.done{opacity:.6}.s3g{display:grid;gap:4px}.progline{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;width:100%;text-align:left;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);font:inherit;font-size:.9rem;cursor:pointer;margin:12px 0}.progline .prow-a{margin-left:auto}.dlwords>summary{cursor:pointer}.dlwords .chip.on{border-color:var(--accent)}.dlwords .chip.on::before{content:"● ";color:var(--accent);font-size:.7em}.dwcard{display:grid;gap:4px;padding:10px 12px;border-radius:10px;background:var(--bg);margin-top:8px}.mfold>summary{cursor:pointer;list-style:none}.mfold>summary::-webkit-details-marker{display:none}.mfold>summary::before{content:"▸ ";color:var(--muted,#888)}.mfold[open]>summary::before{content:"▾ "}.mfold[open]>summary{margin-bottom:10px}
 .toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);border-radius:10px;padding:10px 14px;display:flex;gap:12px;align-items:center;font-size:.88rem;max-width:calc(100% - 32px);z-index:20;box-shadow:0 6px 20px rgba(0,0,0,.18)}
 .toast button{font:inherit;font-weight:600;background:transparent;border:0;color:var(--accent-soft);cursor:pointer;text-decoration:underline}
 @media (max-width:560px){
@@ -1403,6 +1403,83 @@ function homePick(k){
   else if(t==="g"){gs.view=id;setTab("gram");pushLayer("gview");}
   else if(t==="d"){sp.mode="dlg";sp.dv="view";sp.dcur=id;sp.drole=null;sp.dshow={};setTab("speak");}
 }
+
+/* ================= 오늘의 3분 세트: 문법 1개 → 그 문법이 든 문장 → SJPT 1문제 ================= */
+let set3=null;
+const set3Log=()=>{try{return JSON.parse(localStorage.getItem("jpvocab-set3")||"{}");}catch(_){return {};}};
+function set3Mark(){try{const o=set3Log();o[today()]=(o[today()]|0)+1;localStorage.setItem("jpvocab-set3",JSON.stringify(o));}catch(_){}}
+function set3Build(off){
+  const G=words.filter(w=>w.kind==="gram"&&w.rx);if(!G.length)return null;
+  const pri=G.slice().sort((a,b)=>((isNew(b)||isDue(b))-(isNew(a)||isDue(a)))||byOrder(a,b)).slice(0,40);
+  const st=((dayNo()+(off|0))%pri.length+pri.length)%pri.length;let g=null,uses=[];
+  for(let k=0;k<pri.length;k++){const w=pri[(st+k)%pri.length];const u=gramUses(w,3);if(u.length){g=w;uses=u;break;}}
+  if(!g){g=pri[st];uses=[];}
+  let re=null;try{re=new RegExp(g.rx,"u");}catch(_){}
+  const pool=sjpt.filter(q=>q.part>=2&&q.part<=6);
+  const hit=re?pool.filter(q=>re.test(plainJa(q.a1||"")+plainJa(q.a2||""))):[];
+  const pk=(hit.length?hit:pool.filter(q=>q.part===3||q.part===4)).slice().sort((a,b)=>(a.cnt|0)-(b.cnt|0));
+  const sq=pk.length?pk[(dayNo()+(off|0))%Math.min(pk.length,5)]:null;
+  return {gid:g.id,uses,sid:sq?sq.id:null,hit:!!hit.length,step:0};
+}
+function set3Html(){
+  const g=words.find(w=>w.id===set3.gid),q=sjpt.find(x=>x.id===set3.sid),st=set3.step;
+  if(!g){set3=null;return "";}
+  const ex=examples(g)[0];
+  const pills=["문법","문장","말하기"].map((t,i)=>`<span class="s3p${i===st?" on":i<st?" done":""}">${i+1} ${t}</span>`).join("");
+  let body="";
+  if(st===0)body=`<div class="s3g"><span class="gw" lang="ja" style="font-size:1.5rem">${esc(g.w)}</span><span>${esc(g.m||"")}</span>${g.cn?`<span class="note">만드는 법 · ${esc(g.cn)}</span>`:""}</div>
+      ${ex?`<div class="dex"><span class="ja" lang="ja">${rubyHtml(ex.src)}${spk(ttsOf(ex.src),"예문")}</span><span class="ko">${esc(ex.ko)}</span></div>`:""}
+      ${g.note?`<p class="note" style="margin:0">${esc(g.note)}</p>`:""}
+      <div class="row"><button class="btn primary" data-s3="next">문장에서 보기 →</button><button class="link" data-gopen="${g.id}">문법 사전에서 자세히</button></div>`;
+  else if(st===1)body=`<p class="note" style="margin:0">「${esc(g.w)}」이(가) 들어간 실제 문장이에요. 소리를 듣고 한 번씩 따라 말해 보세요.</p>
+      ${set3.uses.length?set3.uses.map(u=>`<div class="dex"><span class="ja" lang="ja">${rubyHtmlG(u.src,g.id)}${spk(ttsOf(u.src),"문장")}</span><span class="ko">${esc(String(u.ko||"").replace(/[\[\]]/g,""))}</span><span class="note">${esc(u.from||"")}</span></div>`).join(""):`<p class="note">이 문법이 든 다른 문장이 아직 없어요. 예문을 한 번 더 따라 말해 보세요.</p>`}
+      <div class="row"><button class="btn primary" data-s3="next">말하기로 →</button><button class="btn" data-s3="prev">← 문법</button></div>`;
+  else body=q?`<p class="note" style="margin:0">${set3.hit?`모범 답안에 「${esc(g.w)}」이(가) 나오는 문제예요. 이 문형을 써서 답해 보세요.`:`오늘 문형을 하나 넣어서 답해 보세요: 「${esc(g.w)}」`}</p>
+      <div class="sjq" lang="ja">${rubyHtml(q.q)}<button class="spk" data-say="${esc(ttsOf(q.q))}" aria-label="질문 듣기">${SPK}</button></div><span class="note">SJPT ${q.part}부 · ${esc(q.qko||"")}</span>
+      <div class="row"><button class="btn primary" data-s3="sj">시험처럼 답하기 (생각→답변 시간)</button><button class="btn" data-s3="end">세트 끝내기</button></div>`
+      :`<p class="note">SJPT 문제가 없어요. 자료 파일을 불러오면 생겨요.</p><div class="row"><button class="btn primary" data-s3="end">세트 끝내기</button></div>`;
+  return `<div class="panel s3"><div class="qtop"><span>오늘의 3분 세트</span><button class="mini" data-s3="close">닫기</button></div><div class="s3pills">${pills}</div>${body}</div>`;
+}
+function set3Click(d){
+  const a=d.s3;if(!a||!set3)return false;
+  if(a==="close"){set3=null;renderToday();return true;}
+  if(a==="next"){set3.step=Math.min(2,set3.step+1);renderToday();window.scrollTo(0,0);return true;}
+  if(a==="prev"){set3.step=Math.max(0,set3.step-1);renderToday();return true;}
+  if(a==="sj"){const id=set3.sid;set3Mark();set3=null;setTab("speak");sjStart([id],true);return true;}
+  if(a==="end"){set3Mark();set3=null;renderToday();toast("오늘 세트 끝! 내일은 다른 문법으로 나와요.");return true;}
+  return false;
+}
+/* ================= 헷갈리는 짝 퀴즈 (문법 사전의 '헷갈리는 문형'으로) ================= */
+let pq=null;
+function pqBuild(){
+  const all=words.filter(w=>w.kind==="gram"),byW=new Map(all.map(w=>[w.w,w])),items=[];
+  for(const w of all)for(const c of (Array.isArray(w.cmp)?w.cmp:[])){const b=byW.get(c.w);if(!b||b.id===w.id)continue;
+    const ex=examples(w).filter(e=>/\[[^\]]+\]/.test(e.src));if(!ex.length)continue;const e=pick(ex);
+    items.push({a:w.id,b:b.id,src:e.src,ko:e.ko,d:c.d,opts:shuffle([w.id,b.id])});}
+  return {items:shuffle(items).slice(0,10),i:0,pick:null,ok:0,n:items.length};
+}
+function pqHtml(){
+  const it=pq.items[pq.i];
+  if(!it)return `<div class="panel"><div class="qtop"><span>헷갈리는 짝 퀴즈</span><button class="mini" data-pq="close">닫기</button></div><div class="qprompt ko">${pq.ok} / ${pq.items.length} 맞았어요</div><p class="note" style="margin:0">틀린 짝은 문법 사전에서 '헷갈리는 문형' 설명을 다시 읽어 보세요.</p><div class="row"><button class="btn primary" data-pq="again">새 문제로 다시</button><button class="btn" data-pq="close">문법 사전으로</button></div></div>`;
+  const W=id=>words.find(w=>w.id===id)||{},A=W(it.a),done=pq.pick!==null;
+  return `<div class="panel"><div class="qtop"><span>헷갈리는 짝 퀴즈 · ${pq.i+1} / ${pq.items.length}</span><button class="mini" data-pq="close">그만</button></div>
+    <div class="qask">이 문장에 더 알맞은 문형은? <span class="note">(둘 다 문법상 될 때는 뉘앙스로 골라요)</span></div>
+    <div class="qprompt sent" lang="ja">${rubyHtml(it.src.replace(/\[[^\]]+\]/,"（　　　）"))}</div><div class="note">${esc(String(it.ko||"").replace(/[\[\]]/g,""))}</div>
+    <div class="opts">${it.opts.map((id,i)=>{const w=W(id);let c="opt jp";if(done){if(id===it.a)c+=" right";else if(i===pq.pick)c+=" wrong";}
+      return `<button class="${c}" data-pqa="${i}" ${done?"disabled":""}><span class="k">${i+1}</span><span class="t">${esc(w.w)}${done?`<span class="src">${esc(w.m||"")}</span>`:""}</span></button>`;}).join("")}</div>
+    ${done?`<div class="dex"><span>${it.opts[pq.pick]===it.a?"정답이에요.":"아쉬워요."} 정답 문장: <span lang="ja">${rubyHtml(it.src.replace(/[\[\]]/g,""))}</span></span><span class="note">차이 · ${esc(it.d||"")}</span></div>
+      <div class="row"><button class="btn primary" data-pq="next">다음</button><button class="link" data-gopen="${A.id}">「${esc(A.w)}」 자세히</button></div>`:""}
+  </div>`;
+}
+function pqClick(d){
+  if(d.pqa!==undefined&&pq&&pq.pick===null){pq.pick=+d.pqa;const it=pq.items[pq.i];if(it.opts[pq.pick]===it.a)pq.ok++;renderGram();return true;}
+  if(!d.pq)return false;
+  if(d.pq==="next"){pq.i++;pq.pick=null;renderGram();window.scrollTo(0,0);return true;}
+  if(d.pq==="again"){pq=pqBuild();renderGram();return true;}
+  if(d.pq==="close"){pq=null;gs.view=null;renderGram();return true;}
+  if(d.pq==="start"){pq=pqBuild();gs.view="__pair";pushLayer("gview");renderGram();window.scrollTo(0,0);return true;}
+  return false;
+}
 /* ================= 자료 탭 ================= */
 function renderLib(){
   const box=$("lib");if(!loaded){box.innerHTML='<div class="panel"><div class="empty">불러오는 중…</div></div>';return;}
@@ -1473,6 +1550,7 @@ function gramUses(w,max){ // 다른 단어의 예문·상황 대화에서 이 �
 function renderGram(){
   const box=$("gram");if(!loaded){box.innerHTML='<div class="panel"><div class="empty">불러오는 중…</div></div>';return;}
   const all=gramAll();
+  if(gs.view==="__pair"){if(!pq)pq=pqBuild();box.innerHTML=pqHtml();return;}
   if(gs.view){
     const w=all.find(x=>x.id===gs.view);if(!w){gs.view=null;return renderGram();}
     const exs=examples(w),uses=gramUses(w,8),cmp=Array.isArray(w.cmp)?w.cmp:[];
@@ -1502,6 +1580,7 @@ function renderGram(){
       <div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">문법 사전</h2><span class="note" id="gCount"></span></div>
       <input id="gSearch" type="search" placeholder="문형·뜻으로 찾기 (예: てみる, 추측)" aria-label="문법 찾기">
       <div class="row gchips" id="gChips"></div>
+      <button class="btn" data-pq="start">헷갈리는 짝 퀴즈 (비슷한 문형 고르기)</button>
       <button class="cta" id="gLearn"><span class="cta-t">문법 카드로 공부하기</span><span class="cta-s" id="gLearnS"></span></button>
     </div><div class="glist" id="gList"></div>`;
     $("gSearch").oninput=e=>{gs.q=e.target.value;renderGram();};
@@ -1613,7 +1692,10 @@ function renderToday(){
   if(rs) cont=`<button class="cta" id="goResume"><span class="cta-t">이어서 하기</span><span class="cta-s">${esc(rs.scope||batchScope(rs))} · ${rs.left}개 남음</span></button><div class="cta-sub"><button class="link" id="dropResume">이 묶음 닫기</button></div>`;
   else if(lr) cont=`<button class="cta" id="goListenC"><span class="cta-t">이어서 하기</span><span class="cta-s">${lr.q[0]&&lr.q[0].k==="s"?"따라 말하기":"듣기 연습"} · 남은 ${fmtMin(lr.q.slice(lr.i).reduce((t,it)=>t+lsDur(it),0))}</span></button>`;
   const pk=homePicks(),pick=pk.length?pk[((dayNo()+(state.pickOff||0))%pk.length+pk.length)%pk.length]:null;
-  const pickHtml=pick?`<div class="pick"><span class="pick-l">오늘의 한 가지</span><button class="pick-b" data-pick="${pick.k}"><span class="pick-k">${esc(pick.kind)}</span><span class="pick-t" ${pick.ja?'lang="ja"':""}>${esc(pick.t)}</span><span class="pick-s">${esc(pick.s)}</span></button>${pk.length>1?`<button class="link pick-n" id="pickNext">다른 추천</button>`:""}</div>`:"";
+  if(set3){box.innerHTML=set3Html();if(set3)pushLayer("set3");return;}
+  const s3n=set3Log()[today()]|0,hasG=words.some(w=>w.kind==="gram"&&w.rx);
+  const setHtml=hasG?`<div class="pick"><span class="pick-l">오늘의 3분 세트</span><button class="pick-b" data-s3go="1"><span class="pick-k">${s3n?`✓ 오늘 ${s3n}세트 했어요 · 하나 더`:"문법 1개 → 그 문법이 든 문장 → SJPT 1문제"}</span><span class="pick-t">${s3n?"다른 문법으로 한 세트 더":"지금 3분만 해 볼까요?"}</span><span class="pick-s">듣고 · 따라 말하고 · 직접 말해 보기</span></button></div>`:"";
+  const pickHtml0=pick?`<div class="pick"><span class="pick-l">오늘의 한 가지</span><button class="pick-b" data-pick="${pick.k}"><span class="pick-k">${esc(pick.kind)}</span><span class="pick-t" ${pick.ja?'lang="ja"':""}>${esc(pick.t)}</span><span class="pick-s">${esc(pick.s)}</span></button>${pk.length>1?`<button class="link pick-n" id="pickNext">다른 추천</button>`:""}</div>`:"";
   const revRow=dueAll?`<button class="revrow" id="goReview"><span class="revrow-t"><b>복습할 것 ${dueAll}개</b><span class="note">약 ${mins}분 · 모든 자료에서</span></span><span class="prow-a" aria-hidden="true">›</span></button>`:"";
   const favD=dialogs.filter(x=>x.fav),favG=words.filter(w=>w.kind==="gram"&&w.fav),favS=sjpt.filter(q=>q.fav);
   const favHtml=favD.length+favG.length+favS.length?`<h2 class="sec-h">★ 즐겨찾기</h2><div class="favrow">${favD.map(x=>`<button class="chip favchip" data-dlgopen="${x.id}">💬 ${esc(x.title)}</button>`).join("")}${favG.map(w=>`<button class="chip favchip" data-gopen="${w.id}" lang="ja">${esc(w.w)}</button>`).join("")}${favS.map(q=>`<button class="chip favchip" data-sjone="${q.id}">SJPT ${q.part}부 · ${esc(plainJa(q.q).slice(0,14))}</button>`).join("")}</div>`:"";
@@ -1621,7 +1703,7 @@ function renderToday(){
   box.innerHTML=`<div class="panel hero2 hub">
       <div class="hero-top"><span class="date">${dd.getMonth()+1}월 ${dd.getDate()}일 ${wk}요일</span></div>
       ${cont}
-      ${pickHtml}
+      ${setHtml||pickHtml0}
       ${revRow}
       ${!cont&&!pick&&!revRow?`<p class="note" style="margin:0">아래 탭에서 자료·문법·말하기를 골라 공부해 보세요.</p>`:""}
     </div>
@@ -1631,6 +1713,7 @@ function renderToday(){
       <button class="qk" data-qk="sjpt"><span class="qk-i" aria-hidden="true">🎙</span><span>SJPT</span></button>
       <button class="qk" id="goFlag"${flags?"":" disabled"}><span class="qk-i" aria-hidden="true">↺</span><span>다시 보기${flags?` ${flags}`:""}</span></button>
     </div>
+    <button class="progline" data-goscan="1"><span style="display:grid;gap:2px;flex:1"><span>📩 받은 메일·자료 문장으로 단어 찾기</span><span class="note">붙여 넣으면 모르는 단어를 골라 그 문장째 예문으로 넣어요</span></span><span class="prow-a" aria-hidden="true">›</span></button>
     ${(()=>{const lw=words.filter(w=>w.kind!=="gram"&&!isNew(w)).length,G=words.filter(w=>w.kind==="gram"),lg=G.filter(w=>!isNew(w)).length,ps=sjpt.filter(q=>q.cnt).length;
       return `<button class="progline" data-gorec="1" aria-label="학습 기록 보기"><span class="lbl">내 진도</span><span>외운 단어·표현 <b>${lw}</b></span>${G.length?`<span>문법 <b>${lg}</b>/${G.length}</span>`:""}${sjpt.length?`<span>SJPT <b>${ps}</b>/${sjpt.length}</span>`:""}<span class="prow-a" aria-hidden="true">›</span></button>`;})()}
     ${favHtml}
@@ -2791,9 +2874,10 @@ addEventListener("popstate",e=>{
   if(!$("listen").hidden){lsClose();return;}
   if(!$("setSheet").hidden){$("setSheet").hidden=true;return;}
   if(!$("scopeSheet").hidden){$("scopeSheet").hidden=true;return;}
+  if(state.tab==="today"&&set3){set3=null;renderToday();return;}
   if(state.tab==="today"&&quiz.phase!=="home"){leaveQuiz();return;}
   if(!$("gpop").hidden){$("gpop").hidden=true;return;}
-  if(state.tab==="gram"&&gs.view){gs.view=null;renderGram();return;}
+  if(state.tab==="gram"&&gs.view){gs.view=null;pq=null;renderGram();return;}
   if(state.tab==="speak"&&sj.run){sjStop();sj.run=null;renderSpeak();return;}
   if(state.tab==="speak"&&sp.mode==="dlg"&&sp.dv&&sp.dv!=="list"){speechSynthesis?.cancel?.();sp.dv="list";renderDlg();return;}
   if(state.tab==="speak"&&(sp.mode||sj.part)){stopListen();sj.part=null;sp.mode=null;renderSpeak();return;}
@@ -2891,6 +2975,10 @@ document.addEventListener("click",async e=>{
   if(t.dataset&&t.dataset.gomanage){if(quiz.phase==="src")leaveQuiz(true);setTab("manage");window.scrollTo(0,0);return;}
   if(d.gpclose){$("gpop").hidden=true;return;}
   if(d.pick){homePick(d.pick);return;}
+  if(d.s3go){set3=set3Build(set3Log()[today()]|0);renderToday();window.scrollTo(0,0);return;}
+  if(d.s3&&set3Click(d))return;
+  if((d.pq||d.pqa!==undefined)&&pqClick(d))return;
+  if(d.goscan){setTab("manage");setTimeout(()=>{const el=$("scanText");if(el){el.scrollIntoView({block:"center"});el.focus();}},80);return;}
   if(t.id==="pickNext"){state.pickOff=(state.pickOff||0)+1;renderToday();return;}
   if(d.sjone){setTab("speak");sjStart([d.sjone],false);return;}
   if(d.sjfav){const q=sjpt.find(x=>x.id===d.sjfav);if(q){q.fav=!q.fav;db.collection("sjpt").doc(q.id).update({fav:q.fav}).catch(()=>{});rerender();}return;}
