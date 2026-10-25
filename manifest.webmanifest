@@ -1,7 +1,7 @@
 {
-  "name": "日本語 단어장",
-  "short_name": "단어장",
-  "description": "업무·일상 일본어 단어를 복습 간격에 맞춰 외우는 단어장",
+  "name": "日本語 공부",
+  "short_name": "일본어",
+  "description": "업무 회화·문법·SJPT·단어를 언제든 공부하는 일본어 학습 앱",
   "lang": "ko",
   "start_url": "./",
   "scope": "./",

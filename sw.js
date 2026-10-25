@@ -2,7 +2,7 @@
    - 앱 화면(index.html): 인터넷이 되면 항상 새 버전을 받고, 안 되면 저장해 둔 버전을 보여 줌
    - 아이콘·글꼴: 저장해 둔 것을 먼저 쓰고 뒤에서 새로 받아 둠
    새 버전을 올릴 때 VERSION을 바꾸면 예전 캐시가 정리됨 */
-const VERSION = "v1";
+const VERSION = "v2";
 const CACHE = "jpvocab-" + VERSION;
 const CORE = ["./", "./index.html", "./manifest.webmanifest",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png", "./icons/favicon-64.png"];
