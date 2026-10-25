@@ -358,7 +358,7 @@ textarea{min-height:76px;font-family:var(--f-jp);resize:vertical}
 .sjp{display:grid;gap:2px;text-align:left;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;cursor:pointer}
 .sjp-n{font-size:.72rem;color:var(--accent);font-weight:700}.sjp-t{font-weight:700;font-size:.9rem}.sjp-s{font-size:.75rem;color:var(--muted)}
 .sjlist{display:grid;gap:8px}.sjrow{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
-.sjrun{display:grid;gap:12px}.sjscene{display:grid;gap:2px;padding:10px 12px;border-radius:10px;background:var(--bg);font-size:.9rem}
+.sjrun{display:grid;gap:12px}.sjpic{border-radius:12px;overflow:hidden;line-height:0}.sjpic img{width:100%;height:auto;display:block}.sjfold summary{cursor:pointer;list-style:revert}.sjscene{display:grid;gap:2px;padding:10px 12px;border-radius:10px;background:var(--bg);font-size:.9rem}
 .sjq{font-family:var(--f-jp);font-size:1.25rem;line-height:2;font-weight:600}
 .sjtimer{display:grid;gap:6px;padding:10px 12px;border-radius:12px;background:var(--accent-soft)}.sjtimer.ans{background:var(--warn-soft)}.sjtimer b{font-size:1.3rem}
 .prow-tt{flex:1;display:grid;gap:2px;min-width:0}.prow-s{font-size:.78rem;color:var(--muted);font-weight:400}
@@ -1540,6 +1540,14 @@ function renderSjptPart(){
     <div class="sjlist">${L.map(q=>`<div class="sjrow"><button class="dbody" data-sjone="${q.id}">${q.part===7&&q.scene?`<span>${esc(q.scene.replace(/①\s*/,"").slice(0,44))}…</span>`:`<span lang="ja">${esc(plainJa(q.q))}</span>`}<span class="note">${q.part===7?"":esc(q.qko||"")}${q.cnt?` · 연습 ${q.cnt}번${q.conf==="ok"?" · 자신 있음":""}`:""}</span></button><button class="dfav" data-sjfav="${q.id}" aria-label="즐겨찾기">${q.fav?"★":"☆"}</button></div>`).join("")}</div>
   </div>`;
 }
+function sjSceneHtml(q,ph){
+  const pic=q.svg&&/^<svg[\s>]/.test(q.svg)&&!/<script|<foreignObject|\son\w+=|href=/i.test(q.svg)?`<div class="sjpic"><img alt="문제 그림" src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(q.svg)}"></div>`:"";
+  if(!q.scene)return pic;
+  if(q.part===6)return `<div class="sjscene"><span class="xl">상황</span><span>${esc(q.scene)}</span></div>`;
+  const open=ph==="show"?" open":"";
+  const lab=pic?"그림 설명":(q.part===7?"그림 장면 보기 (먼저 질문만 듣고 떠올려 보세요)":"그림 장면 보기");
+  return `${pic}<details class="sjscene sjfold"${open}><summary class="xl">${lab}</summary><span>${esc(q.scene)}</span></details>`;
+}
 function renderSjptRun(){
   const box=$("speak"),r=sj.run;
   if(r.phase==="end"){box.innerHTML=`<div class="panel"><div class="qprompt ko">${r.ids.length}문제 끝!</div><p class="note" style="margin:0">'다시 연습'으로 표시한 문제는 다음에 먼저 나와요.</p><div class="row"><button class="btn primary" id="sjDone">SJPT 목록으로</button></div></div>`;return;}
@@ -1549,7 +1557,7 @@ function renderSjptRun(){
   const ans=(k)=>q[k]?`<div class="dex"><span class="ja" lang="ja">${rubyHtmlG(q[k])}${spk(ttsOf(q[k]),"답안")}</span>${q[k+"ko"]?`<span class="ko">${esc(q[k+"ko"])}</span>`:""}</div>`:"";
   box.innerHTML=`<div class="panel sjrun">
     <div class="qtop"><span>${q.part}부 · ${esc(P.name)} · ${r.i+1} / ${r.ids.length}</span><button class="mini" id="sjQuit">그만</button></div>
-    ${q.scene?`<div class="sjscene"><span class="xl">그림 장면</span><span>${esc(q.scene)}</span></div>`:""}
+    ${sjSceneHtml(q,ph)}
     <div class="sjq" lang="ja">${rubyHtml(q.q)}<button class="spk" data-say="${esc(ttsOf(q.q))}" aria-label="질문 다시 듣기">${SPK}</button></div>
     ${r.ko||ph==="show"?`<div class="note">${esc(q.qko||"")}</div>`:`<button class="link" id="sjKo">질문 해석 보기</button>`}
     ${timer}
@@ -2640,10 +2648,11 @@ async function readRestore(file){
     const gAdd=(Array.isArray(data.groups)?data.groups:[]).filter(g=>g&&g.id&&!groups[g.id]);
     const dAdd=(Array.isArray(data.dialogs)?data.dialogs:[]).filter(d=>d&&d.id&&Array.isArray(d.lines)&&!dialogs.some(x=>x.id===d.id));
     const sAdd=(Array.isArray(data.sjpt)?data.sjpt:[]).filter(q=>q&&q.id&&q.q&&!sjpt.some(x=>x.id===q.id));
-    const gUpd=(Array.isArray(data.words)?data.words:[]).filter(w=>w&&w.kind==="gram"&&words.some(x=>x.id===w.id&&(!x.rx||!x.gt)));
-    restorePlan={add,gAdd,dAdd,sAdd,gUpd,sjInfo:data.sjptInfo||null,kanji:data.kanji&&typeof data.kanji==="object"?data.kanji:null};
-    if(!add.length&&!gAdd.length&&!dAdd.length&&!sAdd.length&&!gUpd.length){$("bkMsg").textContent=`백업 파일의 단어 ${data.words.length}개가 모두 이미 있어요. 추가할 게 없어요.`;return;}
-    $("bkMsg").textContent=`백업 파일에서 지금 없는 단어 ${add.length}개${gAdd.length?`, 비슷한 말 묶음 ${gAdd.length}개`:""}${dAdd.length?`, 상황 대화 ${dAdd.length}개`:""}${sAdd.length?`, SJPT 문제 ${sAdd.length}개`:""}${gUpd.length?`, 문법 설명 보강 ${gUpd.length}개`:""}를 찾았어요. 이미 있는 단어는 건드리지 않아요.`;
+    const sPic=(Array.isArray(data.sjpt)?data.sjpt:[]).filter(q=>q&&q.id&&q.svg&&sjpt.some(x=>x.id===q.id&&x.svg!==q.svg));
+    const gUpd=(Array.isArray(data.words)?data.words:[]).filter(w=>w&&w.kind==="gram"&&words.some(x=>x.id===w.id&&(!x.gt||(!x.cn&&w.cn))));
+    restorePlan={add,gAdd,dAdd,sAdd,sPic,gUpd,sjInfo:data.sjptInfo||null,kanji:data.kanji&&typeof data.kanji==="object"?data.kanji:null};
+    if(!add.length&&!gAdd.length&&!dAdd.length&&!sAdd.length&&!sPic.length&&!gUpd.length){$("bkMsg").textContent=`백업 파일의 단어 ${data.words.length}개가 모두 이미 있어요. 추가할 게 없어요.`;return;}
+    $("bkMsg").textContent=`백업 파일에서 지금 없는 단어 ${add.length}개${gAdd.length?`, 비슷한 말 묶음 ${gAdd.length}개`:""}${dAdd.length?`, 상황 대화 ${dAdd.length}개`:""}${sAdd.length?`, SJPT 문제 ${sAdd.length}개`:""}${sPic.length?`, SJPT 그림 ${sPic.length}개`:""}${gUpd.length?`, 문법 설명 보강 ${gUpd.length}개`:""}를 찾았어요. 이미 있는 단어는 건드리지 않아요.`;
     $("restoreActs").hidden=false;
   }catch(_){$("bkMsg").className="note err";$("bkMsg").textContent="백업 파일을 읽지 못했어요. 이 단어장에서 받은 '전체 백업' 파일(.json)인지 확인해 주세요.";}
 }
@@ -2655,6 +2664,7 @@ async function doRestore(){
     for(const g of restorePlan.gAdd){const {id,...rest}=g;await db.doc("groups/"+id).set(rest);}
     for(const dl of restorePlan.dAdd||[]){const {id,...rest}=dl;await db.collection("dialogs").doc(id).set(rest);}
     for(const q of restorePlan.sAdd||[]){const {id,...rest}=q;await db.collection("sjpt").doc(id).set(rest);}
+    for(const q of restorePlan.sPic||[]){await db.collection("sjpt").doc(q.id).update({svg:q.svg});}
     for(const g of restorePlan.gUpd||[]){const u={};["w","r","m","note","cn","gt","gl","cmp","rx","ja","jr","ko","exs"].forEach(k=>{if(g[k]!==undefined)u[k]=g[k];});await col.doc(g.id).update(u);}
     if(restorePlan.sjInfo)await db.doc("meta/sjpt").set(restorePlan.sjInfo);
     if(restorePlan.kanji){kk={...restorePlan.kanji,...kk};setMeta("kanji",{map:kk});}
