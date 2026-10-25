@@ -468,7 +468,7 @@ html[data-furi] .lsn-play ruby rt{display:revert;visibility:visible;color:var(--
 html[data-furi] .lsn-play ruby{text-decoration:none;background:none}
 .lsn-hid{visibility:hidden}
 .lsn-stg{font-size:.95rem;font-weight:600;color:var(--p-acc)}
-.lsn-cue{font-size:.85rem;color:var(--p-mut);border:1px solid var(--p-line);border-radius:999px;padding:5px 12px;margin-top:4px}
+.lsn-cue{font-size:.85rem;color:var(--p-mut);margin-top:4px}.lsn-cue::before{content:"할 일 · ";opacity:.8}
 .lsn-dim{opacity:.3}
 .lsn-seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--hide);padding:4px;border-radius:12px}
 .lsn-seg button{font:inherit;font-size:.95rem;border:0;border-radius:9px;padding:10px 8px;background:transparent;color:var(--muted);cursor:pointer}
@@ -3019,7 +3019,7 @@ let shMeta={sets:{},skip:[],hard:[]};
 const SH_INT=[1,3,7,14,30,60];
 const SH_ST={1:"듣기",2:"뒤에서부터 쌓기",3:"전체 따라 말하기",4:"겹쳐 말하기",5:"한국어 → 일본어"};
 const SH_ANN={1:"1단계. 뜻을 확인하며 들어요.",2:"2단계. 뒤에서부터 쌓아 가며 따라 말해요.",3:"3단계. 문장 전체를 따라 말해요.",4:"4단계. 소리에 겹쳐서 말해요.",5:"5단계. 한국어를 듣고 일본어로 말해요."};
-const SH_CUE={1:"들으며 뜻 확인",2:"들은 부분을 소리 내어 따라 말하기",3:"듣고 → 따라 말하고 → 다시 들으며 비교",4:"소리와 동시에 겹쳐 말하기",5:"한국어를 듣고 일본어로 말한 뒤 정답 듣기"};
+const SH_CUE={1:"소리를 들으며 뜻 떠올리기 (해석은 소리가 끝나면 나와요)",2:"들은 부분을 소리 내어 따라 말하기",3:"듣고 → 따라 말하고 → 다시 들으며 비교",4:"소리와 동시에 겹쳐 말하기",5:"한국어를 듣고 일본어로 말한 뒤 정답 듣기"};
 const POLITE=/(です|ます|ません|ました|ましょう|でしょう|ください|ございます|でした|か|ね|よ|が|けど|ので|から|ところです)[。！？!?」]*$/;
 const SET_PHRASE=/(お世話|恐れ入|失礼|申し訳|よろしく|承知|かしこまり|お疲れ|お待た|ありがと|すみません|いたします|おります|ございます|させていただ|いただけ|くださ|お願い)/;
 const isExpr=w=>w.kind==="expr"||SET_PHRASE.test(String(w.w||""));
