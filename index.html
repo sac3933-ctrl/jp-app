@@ -111,7 +111,7 @@ details.more{margin:8px 0}details.more summary{cursor:pointer;color:var(--accent
 button.badge{font-family:inherit;cursor:pointer}
 .dlghead{display:grid;gap:4px;margin-bottom:10px}.dlghead b{font-size:1.1rem}
 .dlg{display:grid;gap:10px;margin:12px 0}
-.dl-line{display:grid;grid-template-columns:30px 1fr;gap:8px;align-items:start}
+.dl-line{display:grid;grid-template-columns:30px 1fr;gap:8px;align-items:start}.dl-line.dl-now .dl-body{outline:2px solid var(--accent,#5b9bd5);outline-offset:2px}.dl-line.dl-now .dl-body:has(.dl-hidden)::before{content:"🎙 지금 말하세요";display:block;margin-bottom:4px;font-size:.85rem;color:var(--accent,#5b9bd5);font-weight:700}
 .dl-line .who{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;font-weight:700;font-size:.85rem}
 .dl-a .who{background:var(--accent-soft);color:var(--accent)}.dl-b .who{background:var(--warn-soft);color:var(--warn)}
 .dl-body{display:grid;gap:2px;padding:8px 12px;border-radius:12px;background:var(--bg);border:1px solid var(--line)}
@@ -288,7 +288,7 @@ textarea{min-height:76px;font-family:var(--f-jp);resize:vertical}
 .mrow .meta{min-width:0}
 .mrow .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:end}
 .mrow.editing{grid-template-columns:minmax(0,1fr)}
-.mlist{display:grid;gap:6px}.mfold>summary{cursor:pointer;list-style:none}.mfold>summary::-webkit-details-marker{display:none}.mfold>summary::before{content:"▸ ";color:var(--muted,#888)}.mfold[open]>summary::before{content:"▾ "}.mfold[open]>summary{margin-bottom:10px}
+.mlist{display:grid;gap:6px}.dlwords>summary{cursor:pointer}.dlwords .chip.on{border-color:var(--accent)}.dlwords .chip.on::before{content:"● ";color:var(--accent);font-size:.7em}.dwcard{display:grid;gap:4px;padding:10px 12px;border-radius:10px;background:var(--bg);margin-top:8px}.mfold>summary{cursor:pointer;list-style:none}.mfold>summary::-webkit-details-marker{display:none}.mfold>summary::before{content:"▸ ";color:var(--muted,#888)}.mfold[open]>summary::before{content:"▾ "}.mfold[open]>summary{margin-bottom:10px}
 .toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);border-radius:10px;padding:10px 14px;display:flex;gap:12px;align-items:center;font-size:.88rem;max-width:calc(100% - 32px);z-index:20;box-shadow:0 6px 20px rgba(0,0,0,.18)}
 .toast button{font:inherit;font-weight:600;background:transparent;border:0;color:var(--accent-soft);cursor:pointer;text-decoration:underline}
 @media (max-width:560px){
@@ -2104,17 +2104,26 @@ function voiceSet(){
 }
 let dlgGender=(()=>{try{return localStorage.getItem("jpvocab-dlgv")||"AmBf";}catch(_){return "AmBf";}})();
 const genderOf=who=>(dlgGender==="AmBf")===(who==="A")?"m":"f";
+let dlgOpt=(()=>{try{return {rate:.85,gap:1,...JSON.parse(localStorage.getItem("jpvocab-dlgopt")||"{}")};}catch(_){return {rate:.85,gap:1};}})();
+const saveDlgOpt=()=>{try{localStorage.setItem("jpvocab-dlgopt",JSON.stringify(dlgOpt));}catch(_){}};
 function speakAs(text,who,onend){
   if(!canSpeak||!text){onend&&onend();return;}
-  try{const v=voiceSet()[genderOf(who)],u=new SpeechSynthesisUtterance(text);u.lang="ja-JP";u.rate=.9;u.pitch=v.pitch;if(v.voice)u.voice=v.voice;
+  try{const v=voiceSet()[genderOf(who)],u=new SpeechSynthesisUtterance(text);u.lang="ja-JP";u.rate=dlgOpt.rate;u.pitch=v.pitch;if(v.voice)u.voice=v.voice;
     if(onend)u.onend=onend;speechSynthesis.speak(u);}catch(_){onend&&onend();}
 }
 let dlgPlay=null;
 function dlgSpeakAll(lines){
   if(!canSpeak)return;
-  speechSynthesis.cancel();dlgPlay={i:0};
-  const run=()=>{if(!dlgPlay||dlgPlay.i>=lines.length){dlgPlay=null;return;}
-    const l=lines[dlgPlay.i];speakAs(ttsOf(l.src),l.who,()=>{if(dlgPlay){dlgPlay.i++;setTimeout(run,350);}});};
+  speechSynthesis.cancel();clearTimeout(dlgPlay&&dlgPlay.t);const me={i:0,t:0};dlgPlay=me;
+  const mark=i=>{document.querySelectorAll(".dl-line").forEach((el,k)=>el.classList.toggle("dl-now",k===i));const b=$("dlPlay");if(b)b.textContent=i<0?(sp.drole?"▶ 롤플레이 시작":"▶ 전체 듣기"):"■ 멈추기";};
+  const next=()=>{if(dlgPlay!==me)return;me.i++;me.t=setTimeout(run,dlgOpt.gap*1000);};
+  const run=()=>{if(dlgPlay!==me)return;if(me.i>=lines.length){dlgPlay=null;mark(-1);return;}
+    const l=lines[me.i];mark(me.i);
+    if(sp.drole&&sp.drole===l.who){ // 내 차례: 말할 시간만큼 기다림
+      const t=Math.max(2.5,[...ttsOf(l.src)].length*.22/dlgOpt.rate);me.t=setTimeout(next,t*1000);
+      const el=document.querySelectorAll(".dl-line")[me.i];if(el)el.scrollIntoView({block:"center",behavior:"smooth"});return;}
+    const el=document.querySelectorAll(".dl-line")[me.i];if(el)el.scrollIntoView({block:"center",behavior:"smooth"});
+    speakAs(ttsOf(l.src),l.who,next);};
   run();
 }
 const dspk=(text,who)=>canSpeak&&text?`<button class="spk" data-sayas="${esc(who)}" data-say="${esc(text)}" aria-label="${who} 대사 듣기" title="${who} 대사 듣기">${SPK}</button>`:"";
@@ -2122,11 +2131,16 @@ function dlgHtml(dl){
   const ws=(dl.wordIds||[]).map(id=>words.find(w=>w.id===id)).filter(Boolean);
   return `<div class="dlghead"><b>${esc(dl.title)}</b><span class="note">${esc(dl.scene)}${dl.cond?` · ${esc(dl.cond.replace(/(상대|분위기|형식): /g,""))}`:""}${dl.level?` · ${esc(dl.level)}`:""}</span>
       <span class="note">A: ${esc(dl.roles.A)} · B: ${esc(dl.roles.B)}</span>
-      ${ws.length?`<span class="row" style="gap:6px">${ws.map(w=>`<span class="chip" style="cursor:default" lang="ja">${esc(w.w)}</span>`).join("")}</span>`:""}</div>
-    <div class="row"><button class="btn" id="dlPlay">▶ 전체 듣기</button><span class="lbl">롤플레이</span><button class="chip" data-drole="A" aria-pressed="${sp.drole==="A"}">내가 A</button><button class="chip" data-drole="B" aria-pressed="${sp.drole==="B"}">내가 B</button><button class="chip" id="dlKo" aria-pressed="${sp.dko}">해석</button><button class="chip" id="dlHide" aria-pressed="${!!sp.dhide}">일본어 가리기</button>${furiChip()}</div>
+      ${ws.length?(()=>{const all=dl.lines.map(l=>plainJa(l.src)).join("");const norm=t=>String(t||"").replace(/^[～~]|[。、！？!?「」\s]/g,"");const used=w=>{const t=norm(w.w);return t&&all.replace(/[。、！？!?「」\s]/g,"").includes(t);};
+        const cur=ws.find(w=>w.id===sp.dword),ex=cur?examples(cur)[0]:null;
+        return `<details class="dlwords"${sp.dwopen?" open":""}><summary class="note">이 장면에서 쓸 단어·표현 ${ws.length}개 <span class="note">(● 이 대화에 나옴 · 누르면 뜻)</span></summary><div class="row" style="gap:6px;margin-top:8px">${ws.map(w=>`<button class="chip${used(w)?" on":""}" data-dword="${w.id}" aria-pressed="${sp.dword===w.id}" lang="ja">${esc(w.w)}</button>`).join("")}</div>
+        ${cur?`<div class="dwcard"><span><b lang="ja">${esc(cur.w)}</b>${cur.r&&cur.r!==cur.w?` <span class="note" lang="ja">${esc(cur.r)}</span>`:""}${spk(wordTts(cur),"단어")} — ${esc(cur.m||"")}</span>${ex?`<span class="ja" lang="ja">${rubyHtml(ex.src)}${spk(ttsOf(ex.src),"예문")}</span><span class="note">${esc(ex.ko)}</span>`:""}</div>`:""}</details>`;})():""}</div>
+    <div class="row"><button class="btn" id="dlPlay">${sp.drole?"▶ 롤플레이 시작":"▶ 전체 듣기"}</button><span class="lbl">롤플레이</span><button class="chip" data-drole="A" aria-pressed="${sp.drole==="A"}">내가 A</button><button class="chip" data-drole="B" aria-pressed="${sp.drole==="B"}">내가 B</button><button class="chip" id="dlKo" aria-pressed="${sp.dko}">해석</button><button class="chip" id="dlHide" aria-pressed="${!!sp.dhide}">일본어 가리기</button>${furiChip()}</div>
+    ${canSpeak?`<div class="row dlopt"><span class="lbl">속도</span>${[[.7,"느리게"],[.85,"조금 느리게"],[1,"보통"],[1.15,"빠르게"]].map(([v,t])=>`<button class="chip" data-dlrate="${v}" aria-pressed="${dlgOpt.rate===v}">${t}</button>`).join("")}</div>
+    <div class="row dlopt"><span class="lbl">대사 사이</span>${[.5,1,2,3,5].map(v=>`<button class="chip" data-dlgap="${v}" aria-pressed="${dlgOpt.gap===v}">${v}초</button>`).join("")}</div>`:""}
     ${canSpeak?(()=>{const vs=voiceSet();return `<div class="row"><span class="lbl">목소리</span><button class="chip" id="dlVoice">${dlgGender==="AmBf"?"A 남성 · B 여성":"A 여성 · B 남성"}</button><span class="note">${!vs.n?"이 기기에 일본어 음성이 없어요.":vs.hasM&&vs.hasF?"":!vs.hasM?"이 기기에는 일본어 남성 음성이 없어 높낮이로 구분해요.":"이 기기에는 일본어 여성 음성이 없어 높낮이로 구분해요."}</span></div>`;})():""}
     ${sp.dhide&&!sp.drole?`<p class="note" style="margin:0">해석만 보고 일본어로 말해 본 뒤 "보기"로 확인하세요.</p>`:""}
-    ${sp.drole?`<p class="note" style="margin:0">내 역할(${sp.drole}) 대사는 가려져 있어요. 해석을 보고 소리 내어 말한 뒤 "보기"로 확인하세요.</p>`:""}
+    ${sp.drole?`<p class="note" style="margin:0">내 역할(${sp.drole}) 대사는 가려져 있어요. <b>롤플레이 시작</b>을 누르면 상대 대사는 들려주고, 내 차례에는 해석을 보고 말할 시간을 줘요. 끝나면 "보기"로 확인하세요.</p>`:""}
     <div class="dlg">${dl.lines.map((l,i)=>{const hide=(sp.dhide||sp.drole===l.who)&&!sp.dshow[i];
       return `<div class="dl-line ${l.who==="B"?"dl-b":"dl-a"}"><span class="who">${l.who}</span><div class="dl-body">
         ${hide?`<div class="dl-hidden"><span class="ko">${esc(l.ko.replace(/[\[\]]/g,""))}</span><button class="mini" data-dshow="${i}">보기</button></div>`
@@ -2229,11 +2243,13 @@ function dlgClick(t,d){
   if(d.dsrc){sp.dsrc=d.dsrc;renderDlg();return true;}
   if(t.id==="dlWordsClear"){sp.dwords=null;renderDlg();return true;}
   if(t.id==="dlMake"){sp.dfree=($("dlFree")?.value||"").trim();dlgCreate();return true;}
-  if(d.dlopen){sp.dcur=d.dlopen;sp.dv="view";sp.drole=null;sp.dshow={};renderDlg();window.scrollTo(0,0);return true;}
+  if(d.dlopen){sp.dcur=d.dlopen;sp.dv="view";sp.drole=null;sp.dshow={};sp.dword=null;sp.dwopen=false;renderDlg();window.scrollTo(0,0);return true;}
   if(t.id==="dlBack"){speechSynthesis?.cancel?.();dlgPlay=null;sp.dv="list";sp.dhide=false;renderDlg();window.scrollTo(0,0);return true;}
   if(t.id==="dlAgain"){const dl=dialogs.find(x=>x.id===sp.dcur);sp.dwords=dl?dl.wordIds:null;sp.dscene="";sp.dfree="";dlgCreate();return true;}
-  if(t.id==="dlPlay"){const dl=dialogs.find(x=>x.id===sp.dcur);if(dl)dlgSpeakAll(dl.lines);return true;}
+  if(t.id==="dlPlay"){if(dlgPlay){clearTimeout(dlgPlay.t);dlgPlay=null;speechSynthesis?.cancel?.();document.querySelectorAll(".dl-line").forEach(el=>el.classList.remove("dl-now"));t.textContent=sp.drole?"▶ 롤플레이 시작":"▶ 전체 듣기";return true;}const dl=dialogs.find(x=>x.id===sp.dcur);if(dl)dlgSpeakAll(dl.lines);return true;}
+  if(d.dlrate||d.dlgap){if(d.dlrate)dlgOpt.rate=+d.dlrate;if(d.dlgap)dlgOpt.gap=+d.dlgap;saveDlgOpt();document.querySelectorAll("[data-dlrate]").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.dlrate===dlgOpt.rate));document.querySelectorAll("[data-dlgap]").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.dlgap===dlgOpt.gap));return true;}
   if(d.drole){sp.drole=sp.drole===d.drole?null:d.drole;sp.dshow={};renderDlg();return true;}
+  if(d.dword){sp.dword=sp.dword===d.dword?null:d.dword;sp.dwopen=true;renderDlg();return true;}
   if(t.id==="dlVoice"){dlgGender=dlgGender==="AmBf"?"AfBm":"AmBf";try{localStorage.setItem("jpvocab-dlgv",dlgGender);}catch(_){}renderDlg();return true;}
   if(t.id==="dlKo"){sp.dko=!sp.dko;renderDlg();return true;}
   if(d.dshow){sp.dshow[d.dshow]=true;renderDlg();const dl=dialogs.find(x=>x.id===sp.dcur);const l=dl?.lines[+d.dshow];if(l){speechSynthesis.cancel();speakAs(ttsOf(l.src),l.who);}return true;}
