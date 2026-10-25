@@ -468,7 +468,7 @@ html[data-furi] .lsn-play ruby rt{display:revert;visibility:visible;color:var(--
 html[data-furi] .lsn-play ruby{text-decoration:none;background:none}
 .lsn-hid{visibility:hidden}
 .lsn-stg{font-size:.95rem;font-weight:600;color:var(--p-acc)}
-.lsn-qopts{display:grid;gap:6px;padding:8px 12px;border-bottom:1px solid var(--p-line)}.lsn-qopts .lbl{min-width:64px;font-size:.8rem;color:var(--p-mut)}.lsn-qopts .chip{padding:4px 10px;font-size:.85rem}.lsn-top .lsn-x+.lsn-x{margin-left:6px}.lsn-cue{font-size:.85rem;color:var(--p-mut);margin-top:4px}.lsn-cue::before{content:"할 일 · ";opacity:.8}
+.lsn-qopts{display:grid;gap:6px;padding:8px 12px;border-bottom:1px solid var(--p-line)}.lsn-qopts .lbl{min-width:64px;font-size:.8rem;color:var(--p-mut)}.lsn-qopts .chip{padding:4px 10px;font-size:.85rem}.lsn-top .lsn-x+.lsn-x{margin-left:6px}.lsn-marks{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 16px;margin-bottom:10px}.lsn-marks [data-lsdone]{border-color:#6CC79C;color:#6CC79C}.lsn-marks [data-lsdone].on{background:#6CC79C;color:#0E1A14;border-style:solid}.lsn-marks .lsn-flag{margin:0;width:100%}.lsn-cue{font-size:.85rem;color:var(--p-mut);margin-top:4px}.lsn-cue::before{content:"할 일 · ";opacity:.8}
 .lsn-dim{opacity:.3}
 .lsn-seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--hide);padding:4px;border-radius:12px}
 .lsn-seg button{font:inherit;font-size:.95rem;border:0;border-radius:9px;padding:10px 8px;background:transparent;color:var(--muted);cursor:pointer}
@@ -3511,9 +3511,9 @@ function lsStageHtml(){
     ${ls.playing?"":`<div class="lsn-paused">일시정지 · 화면을 누르면 계속</div>`}</div>`;
 }
 function lsPlayHtml(){
-  const it=ls.q[ls.i],gym=lsOpt.use==="gym"&&it&&it.k==="w",fl=gym&&ls.flagged.includes(it.id);
+  const it=ls.q[ls.i],isW=it&&it.k==="w",fl=isW&&ls.flagged.includes(it.id),w=isW?words.find(x=>x.id===it.id):null;
   return `<div class="lsn-play">${lsTopHtml()}${lsStageHtml()}
-    ${gym?`<button class="lsn-flag${fl?" on":""}" data-lsflag="${it.id}">${fl?"✓ 다시 보기에 넣었어요 (취소)":"헷갈려요 · 다시 보기에 넣기"}</button>`:""}
+    ${w?`<div class="lsn-marks"><button class="lsn-flag${w.done?" on":""}" data-lsdone="${w.id}" aria-pressed="${!!w.done}">${w.done?"✓ 암기 완료 (취소)":"암기 완료"}</button><button class="lsn-flag${fl?" on":""}" data-lsflag="${w.id}" aria-pressed="${!!fl}">${fl?"✓ 다시 보기에 넣음":"헷갈려요 · 다시 보기"}</button></div>`:""}
     <div class="lsn-ctl">
       <button data-lsnav="-1" aria-label="이전"${ls.i>0?"":" disabled"}><span class="lsn-ic">◀</span><span>이전</span></button>
       <button class="lsn-pp" data-lspp="1" aria-label="${ls.playing?"일시정지":"재생"}"><span class="lsn-ic">${ls.playing?"❚❚":"▶"}</span><span>${ls.playing?"일시정지":"계속"}</span></button>
@@ -3558,6 +3558,7 @@ function lsClick(t,d){
   if(d.lsstop){lsStop();return true;}
   if(d.lsquit){lsPause();lsSaveNow();lsClose();toast("멈춘 곳을 저장했어요. 다시 열면 이어서 들을 수 있어요.");return true;}
   if(d.lsopts){ls.showOpts=!ls.showOpts;lsDrawTop();return true;}
+  if(d.lsdone){const w=words.find(x=>x.id===d.lsdone);if(w){setDone(w,!w.done);if(w.done&&ls.flagged.includes(w.id)){ls.flagged=ls.flagged.filter(x=>x!==w.id);}toast(w.done?"암기 완료! 앞으로 복습·듣기에 안 나와요.":"암기 완료를 풀었어요.");lsDraw();}return true;}
   if(d.lsflag){const id=d.lsflag,on=!ls.flagged.includes(id);ls.flagged=on?[...ls.flagged,id]:ls.flagged.filter(x=>x!==id);lsSetFlag(id,on);
     const b=$("listen").querySelector(".lsn-flag");if(b){b.classList.toggle("on",on);b.textContent=on?"✓ 다시 보기에 넣었어요 (취소)":"헷갈려요 · 다시 보기에 넣기";}return true;}
   if(d.lsck){const id=d.lsck;ls.checked=ls.checked.includes(id)?ls.checked.filter(x=>x!==id):[...ls.checked,id];lsDraw();return true;}
