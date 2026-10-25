@@ -1364,7 +1364,7 @@ function renderSrc(){
 const dayNo=()=>Math.floor(Date.parse(today())/864e5);
 function homePicks(){
   const out=[];
-  const sq=sjpt.slice().sort((a,b)=>((a.cnt|0)-(b.cnt|0))||(a.part-b.part)||String(a.id).localeCompare(String(b.id)))[(dayNo())%Math.max(1,Math.min(20,sjpt.length))];
+  const sq=sjpt.filter(q=>q.part!==1&&q.part!==7).slice().sort((a,b)=>((a.cnt|0)-(b.cnt|0))||(a.part-b.part)||String(a.id).localeCompare(String(b.id)))[(dayNo())%Math.max(1,Math.min(20,sjpt.length))];
   if(sq)out.push({k:"sj:"+sq.id,kind:`SJPT ${sq.part}부 · 1분`,t:plainJa(sq.q),ja:true,s:sq.qko||""});
   const gNew=words.filter(w=>w.kind==="gram"&&isNew(w)).sort(byOrder);
   const g=gNew[0]||words.filter(w=>w.kind==="gram").sort(byOrder)[dayNo()%Math.max(1,words.filter(w=>w.kind==="gram").length)];
@@ -1537,7 +1537,7 @@ function renderSjptPart(){
     <h2 style="margin:0">${n}부 · ${esc(P.name)}</h2>
     ${P.tips.length||P.frame?`<details class="more2"><summary>답변 요령</summary>${P.frame?`<p class="dnote" style="margin:8px 0">${esc(P.frame)}</p>`:""}<ul class="pts">${P.tips.map(t=>`<li>${esc(t)}</li>`).join("")}</ul></details>`:""}
     <div class="row"><button class="btn primary" data-sjgo="${n}:5">시험처럼 연습 (5문제)</button><button class="btn" data-sjstudy="${n}">답안 보며 공부</button></div>
-    <div class="sjlist">${L.map(q=>`<div class="sjrow"><button class="dbody" data-sjone="${q.id}"><span lang="ja">${esc(plainJa(q.q))}</span><span class="note">${esc(q.qko||"")}${q.cnt?` · 연습 ${q.cnt}번${q.conf==="ok"?" · 자신 있음":""}`:""}</span></button><button class="dfav" data-sjfav="${q.id}" aria-label="즐겨찾기">${q.fav?"★":"☆"}</button></div>`).join("")}</div>
+    <div class="sjlist">${L.map(q=>`<div class="sjrow"><button class="dbody" data-sjone="${q.id}">${q.part===7&&q.scene?`<span>${esc(q.scene.replace(/①\s*/,"").slice(0,44))}…</span>`:`<span lang="ja">${esc(plainJa(q.q))}</span>`}<span class="note">${q.part===7?"":esc(q.qko||"")}${q.cnt?` · 연습 ${q.cnt}번${q.conf==="ok"?" · 자신 있음":""}`:""}</span></button><button class="dfav" data-sjfav="${q.id}" aria-label="즐겨찾기">${q.fav?"★":"☆"}</button></div>`).join("")}</div>
   </div>`;
 }
 function renderSjptRun(){
