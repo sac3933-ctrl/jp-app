@@ -2098,9 +2098,14 @@ points는 2~3개.`,{modelTier:"default"});
 const MALE_V=/ichiro|keita|otoya|hattori|daichi|naoki|takumi|kenji|shun|男性|\bmale\b/i,FEMALE_V=/haruka|ayumi|sayaka|nanami|kyoko|o-ren|mizuki|aoi|shiori|mayu|nana|女性|female/i;
 const jaVoices=()=>{try{return canSpeak?speechSynthesis.getVoices().filter(v=>/^ja/i.test(v.lang)):[];}catch(_){return [];}};
 const bestV=vs=>vs.slice().sort((a,b)=>(/natural|online|premium|enhanced|neural/i.test(b.name)-/natural|online|premium|enhanced|neural/i.test(a.name))||(b.localService===false)-(a.localService===false))[0];
+const devVoiceG=()=>{try{return localStorage.getItem("jpvocab-vg")||"";}catch(_){return "";}};
 function voiceSet(){
   const vs=jaVoices(),m=vs.filter(v=>MALE_V.test(v.name)&&!/female/i.test(v.name)),f=vs.filter(v=>!m.includes(v));
-  return {m:m.length?{voice:bestV(m),pitch:1}:{voice:bestV(f)||vs[0]||null,pitch:.62},f:f.length?{voice:bestV(f),pitch:1.08}:{voice:bestV(m)||null,pitch:1.45},hasM:!!m.length,hasF:!!f.length,n:vs.length};
+  if(m.length&&f.length)return {m:{voice:bestV(m),pitch:1},f:{voice:bestV(f),pitch:1.08},hasM:true,hasF:true,n:vs.length};
+  if(vs.length>=2){const a=bestV(vs),b=vs.find(v=>v!==a)||a;return {m:{voice:m.length?bestV(m):b,pitch:.85},f:{voice:m.length?(vs.find(v=>!m.includes(v))||a):a,pitch:1.2},hasM:!!m.length,hasF:!!f.length,n:vs.length,two:true};}
+  // 목소리가 1개뿐: 그 목소리의 성별(자동 판별 또는 사용자가 고른 값)에 맞춰 높낮이로 남녀를 나눔
+  const one=vs[0]||null,g=devVoiceG()||(m.length?"m":FEMALE_V.test(one&&one.name||"")?"f":"m");
+  return g==="m"?{m:{voice:one,pitch:.95},f:{voice:one,pitch:1.6},hasM:true,hasF:false,n:vs.length,one:true,g}:{m:{voice:one,pitch:.6},f:{voice:one,pitch:1.05},hasM:false,hasF:true,n:vs.length,one:true,g};
 }
 let dlgGender=(()=>{try{return localStorage.getItem("jpvocab-dlgv")||"AmBf";}catch(_){return "AmBf";}})();
 const genderOf=who=>(dlgGender==="AmBf")===(who==="A")?"m":"f";
@@ -2138,7 +2143,7 @@ function dlgHtml(dl){
     <div class="row"><button class="btn" id="dlPlay">${sp.drole?"▶ 롤플레이 시작":"▶ 전체 듣기"}</button><span class="lbl">롤플레이</span><button class="chip" data-drole="A" aria-pressed="${sp.drole==="A"}">내가 A</button><button class="chip" data-drole="B" aria-pressed="${sp.drole==="B"}">내가 B</button><button class="chip" id="dlKo" aria-pressed="${sp.dko}">해석</button><button class="chip" id="dlHide" aria-pressed="${!!sp.dhide}">일본어 가리기</button>${furiChip()}</div>
     ${canSpeak?`<div class="row dlopt"><span class="lbl">속도</span>${[[.7,"느리게"],[.85,"조금 느리게"],[1,"보통"],[1.15,"빠르게"]].map(([v,t])=>`<button class="chip" data-dlrate="${v}" aria-pressed="${dlgOpt.rate===v}">${t}</button>`).join("")}</div>
     <div class="row dlopt"><span class="lbl">대사 사이</span>${[.5,1,2,3,5].map(v=>`<button class="chip" data-dlgap="${v}" aria-pressed="${dlgOpt.gap===v}">${v}초</button>`).join("")}</div>`:""}
-    ${canSpeak?(()=>{const vs=voiceSet();return `<div class="row"><span class="lbl">목소리</span><button class="chip" id="dlVoice">${dlgGender==="AmBf"?"A 남성 · B 여성":"A 여성 · B 남성"}</button><span class="note">${!vs.n?"이 기기에 일본어 음성이 없어요.":vs.hasM&&vs.hasF?"":!vs.hasM?"이 기기에는 일본어 남성 음성이 없어 높낮이로 구분해요.":"이 기기에는 일본어 여성 음성이 없어 높낮이로 구분해요."}</span></div>`;})():""}
+    ${canSpeak?(()=>{const vs=voiceSet();return `<div class="row"><span class="lbl">목소리</span><button class="chip" id="dlVoice">${dlgGender==="AmBf"?"A 남성 · B 여성":"A 여성 · B 남성"}</button><span class="note">${!vs.n?"이 기기에 일본어 음성이 없어요.":vs.one?`이 기기에는 일본어 목소리가 1개뿐이라 높낮이로 남녀를 나눠요. 이 목소리는 <button class="link" id="dlVg">${vs.g==="m"?"남성":"여성"}</button>(눌러서 바꾸기). 휴대폰 설정 → 글자 읽어주기(TTS)에서 일본어 목소리를 더 받으면 진짜 남녀 목소리로 나와요.`:vs.two&&!(vs.hasM&&vs.hasF)?"서로 다른 두 목소리로 A·B를 나눠요.":""}</span></div>`;})():""}
     ${sp.dhide&&!sp.drole?`<p class="note" style="margin:0">해석만 보고 일본어로 말해 본 뒤 "보기"로 확인하세요.</p>`:""}
     ${sp.drole?`<p class="note" style="margin:0">내 역할(${sp.drole}) 대사는 가려져 있어요. <b>롤플레이 시작</b>을 누르면 상대 대사는 들려주고, 내 차례에는 해석을 보고 말할 시간을 줘요. 끝나면 "보기"로 확인하세요.</p>`:""}
     <div class="dlg">${dl.lines.map((l,i)=>{const hide=(sp.dhide||sp.drole===l.who)&&!sp.dshow[i];
@@ -2249,6 +2254,7 @@ function dlgClick(t,d){
   if(t.id==="dlPlay"){if(dlgPlay){clearTimeout(dlgPlay.t);dlgPlay=null;speechSynthesis?.cancel?.();document.querySelectorAll(".dl-line").forEach(el=>el.classList.remove("dl-now"));t.textContent=sp.drole?"▶ 롤플레이 시작":"▶ 전체 듣기";return true;}const dl=dialogs.find(x=>x.id===sp.dcur);if(dl)dlgSpeakAll(dl.lines);return true;}
   if(d.dlrate||d.dlgap){if(d.dlrate)dlgOpt.rate=+d.dlrate;if(d.dlgap)dlgOpt.gap=+d.dlgap;saveDlgOpt();document.querySelectorAll("[data-dlrate]").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.dlrate===dlgOpt.rate));document.querySelectorAll("[data-dlgap]").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.dlgap===dlgOpt.gap));return true;}
   if(d.drole){sp.drole=sp.drole===d.drole?null:d.drole;sp.dshow={};renderDlg();return true;}
+  if(t.id==="dlVg"){try{localStorage.setItem("jpvocab-vg",voiceSet().g==="m"?"f":"m");}catch(_){}renderDlg();speakAs("こんにちは。","A",()=>speakAs("こんにちは。","B"));return true;}
   if(d.dword){sp.dword=sp.dword===d.dword?null:d.dword;sp.dwopen=true;renderDlg();return true;}
   if(t.id==="dlVoice"){dlgGender=dlgGender==="AmBf"?"AfBm":"AmBf";try{localStorage.setItem("jpvocab-dlgv",dlgGender);}catch(_){}renderDlg();return true;}
   if(t.id==="dlKo"){sp.dko=!sp.dko;renderDlg();return true;}
