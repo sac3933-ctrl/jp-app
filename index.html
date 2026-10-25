@@ -3174,18 +3174,20 @@ function shToggleSkip(sid){
 /* ================= 듣기 연습 (운전·운동 중) =================
    화면을 보지 않고 귀로 복습한다. 기록(칸·복습 날짜)에는 반영하지 않고, 달력에 들은 시간만 남긴다.
    이어 듣기 위치는 meta/listen, 듣기 설정은 settings.listen 에 저장한다. */
-const LS_DEF={kind:"word",src:"auto",sm:"auto",min:20,dir:"jk",gap:3,rate:1,say:1.5,voice:"",ex:true,twice:false,use:"drive"};
+const LS_DEF={kind:"word",mat:"all",src:"auto",sm:"auto",min:20,dir:"jk",gap:3,rate:1,say:1.5,voice:"",ex:true,twice:false,use:"drive"};
 let lsOpt={...LS_DEF},lsSaved=null,lsTick=null;
 const ls={added:[],sents:[],logSS:0,plan:[],view:"setup",q:[],i:0,playing:false,tok:0,reveal:0,heard:[],flagged:[],checked:[],secs:0,t0:0,logS:0,logN:0,wake:null,wakeOk:null,note:"",gest:null};
-const LS_SRC=[["auto","추천 순서"],["due","오늘 복습"],["flag","다시 보기"],["leech","자주 틀림"],["recent","최근 7일"],["dlg","상황 대화"]];
+const LS_SRC=[["auto","추천 순서"],["due","오늘 복습"],["flag","다시 보기"],["recent","최근 7일"],["leech","자주 틀림"],["new","안 배운 것 미리 듣기"]];
 const koVoice=()=>{try{const vs=speechSynthesis.getVoices().filter(v=>/^ko/i.test(v.lang));return bestV(vs)||null;}catch(_){return null;}};
 const lsJaSec=(s,r)=>(.5+String(s||"").length*.17)/(r?r/.92:lsOpt.rate);
 const lsKoSec=s=>(.5+String(s||"").length*.14)/lsOpt.rate;
 const lsRead=w=>wordTts(w);
 const lsMean=w=>String(w.m||"").replace(/\s*[(（][^)）]*[)）]/g,"").trim()||String(w.m||"");
 function lsPool(src){
-  const D=quiz.deck,inD=words.filter(w=>inScope(w,D)),L=inD.filter(w=>!isNew(w)&&!w.done),wk=addDays(today(),-6);
-  const due=reviewList(D),flag=inD.filter(flagOf),leech=inD.filter(leechOf);
+  const D=quiz.deck,sd=lsOpt.mat&&lsOpt.mat!=="all"?SRC_DEF.find(x=>x.k===lsOpt.mat):null,inD=sd?srcWords(sd):words.filter(w=>inScope(w,D));
+  if(src==="new")return inD.filter(isNew).sort(byOrder);
+  const L=inD.filter(w=>!isNew(w)&&!w.done),wk=addDays(today(),-6);
+  const inSet=new Set(inD.map(w=>w.id)),due=reviewList(D).filter(w=>!sd||inSet.has(w.id)),flag=inD.filter(flagOf),leech=inD.filter(leechOf);
   const recent=L.filter(w=>(w.first||"")>=wk).sort((a,b)=>String(b.first).localeCompare(String(a.first)));
   if(src==="due")return due;if(src==="flag")return flag;if(src==="leech")return leech;if(src==="recent")return recent;
   const rest=L.slice().sort((a,b)=>(lvOf(a)-lvOf(b))||String(a.lastOk||"").localeCompare(String(b.lastOk||"")));
@@ -3223,7 +3225,7 @@ function lsBuild(){
     return q;
   }
   let pool=lsPool(lsOpt.src);
-  if(!pool.length&&lsOpt.src==="auto"){pool=words.filter(w=>inScope(w,quiz.deck)).sort(byOrder);if(pool.length)ls.note="아직 공부한 단어가 없어서 단어장 앞쪽 단어부터 들려줘요.";}
+  if(!pool.length&&lsOpt.src==="auto"){pool=lsPool("new");if(pool.length)ls.note="이 자료는 아직 배운 단어가 없어서, 앞쪽 단어부터 미리 들려줘요.";}
   let n=0;
   for(let r=0;r<3&&pool.length&&t<goal;r++){
     for(const w of r?shuffle(pool):pool){
@@ -3345,8 +3347,13 @@ function lsSetupHtml(){
       :`<p class="lsn-pre"><b>${fmtMin(sec)}</b> · 묶음 ${ls.plan.length}개${nRev?` (복습 ${nRev} · 새 ${nNew})`:""} · 문장 ${new Set(q.map(it=>it.s.sid)).size}개</p>
         <div class="lsn-plan">${ls.plan.map(x=>`<span class="${x.review?"rv":""}">${x.review?"복습 · ":""}${esc(x.kind==="dlg"?x.title:x.kind==="expr"?"업무 정형 표현":"예문 "+(x.words||[]).slice(0,3).join("·"))}</span>`).join("")}</div>`;
   }else{
-    const cnt=k=>k==="dlg"?dialogs.filter(d=>d.lines&&d.lines.length).length:k==="auto"?null:lsPool(k).length;
-    srcRow=`<div class="lsn-grp"><span class="lbl">무엇을 들을까요</span><div class="row">${LS_SRC.map(([v,l])=>{const n=cnt(v);return `<button class="chip" data-lsopt="src" data-lsv="${v}" aria-pressed="${lsOpt.src===v}"${n===0?" disabled":""}>${l}${n!=null?` ${n}`:""}</button>`;}).join("")}</div>${lsOpt.src==="auto"?`<span class="note">오늘 복습 → 다시 보기 → 자주 틀림 → 최근 7일 → 나머지 배운 단어 순서예요.</span>`:""}</div>`;
+    const nDlg=dialogs.filter(d=>d.lines&&d.lines.length).length,isD=lsOpt.src==="dlg";
+    const cnt=k=>k==="auto"?null:lsPool(k).length;
+    const mats=[["all","전체"],...SRC_DEF.filter(x=>x.k!=="daily"&&x.k!=="work"||true).map(x=>[x.k,x.t])].map(([k,t])=>{const n=k==="all"?words.length:srcWords(SRC_DEF.find(x=>x.k===k)).length;return n?`<button class="chip" data-lsopt="mat" data-lsv="${k}" aria-pressed="${(lsOpt.mat||"all")===k}">${t} ${n}</button>`:"";}).join("");
+    srcRow=`<div class="lsn-grp"><span class="lbl">무엇을 들을까요</span><div class="lsn-seg" role="group"><button data-lsopt="src" data-lsv="auto" aria-pressed="${!isD}">단어·표현</button><button data-lsopt="src" data-lsv="dlg" aria-pressed="${isD}"${nDlg?"":" disabled"}>상황 대화 ${nDlg}</button></div></div>
+      ${isD?`<div class="lsn-grp"><span class="note">대화를 섞어서 들려줘요. 특정 대화만 들으려면 목록에서 골라요.</span><div class="row"><button class="btn" data-lsdpick="1">대화 목록에서 고르기</button></div></div>`
+      :`<div class="lsn-grp"><span class="lbl">자료</span><div class="row">${mats}</div></div>
+      <div class="lsn-grp"><span class="lbl">범위</span><div class="row">${LS_SRC.map(([v,l])=>{const n=cnt(v);return n===0?"":`<button class="chip" data-lsopt="src" data-lsv="${v}" aria-pressed="${lsOpt.src===v}">${l}${n!=null?` ${n}`:""}</button>`;}).join("")}</div>${lsOpt.src==="auto"?`<span class="note">오늘 복습 → 다시 보기 → 자주 틀림 → 최근 7일 → 나머지 배운 단어 순서로 들려줘요.</span>`:""}</div>`}`;
     const uniq=new Set(q.map(it=>it.id)).size;
     pre=!q.length?`<p class="note err" style="margin:0">이 범위에는 들을 ${lsOpt.src==="dlg"?"대화가":"단어가"} 없어요. 다른 범위를 골라 주세요.</p>`
       :`<p class="lsn-pre"><b>${fmtMin(sec)}</b> · ${lsOpt.src==="dlg"?`대화 ${uniq}개 (${q.length}문장)`:`단어 ${uniq}개${q.length>uniq?` · 모자라서 ${Math.ceil(q.length/uniq)}바퀴 돌아요`:""}`}</p>${ls.note?`<p class="note" style="margin:0">${esc(ls.note)}</p>`:""}`;
@@ -3356,7 +3363,7 @@ function lsSetupHtml(){
     srcRow=`<div class="lsn-grp"><span class="lbl">고른 상황 대화 ${names.length}개</span><span class="note">${names.map(esc).join(" · ")}</span><div class="row"><button class="chip" data-lsunpick="1">고른 것 풀고 추천 순서로</button></div></div>`;
   }
   const rs=lsResumable();
-  const rsKind=rs&&rs.q[0]&&rs.q[0].k==="s"?"따라 말하기":"단어 복습";
+  const rsKind=rs&&rs.q[0]?(rs.q[0].k==="s"?"따라 말하기":rs.q[0].k==="d"?"상황 대화 듣기":"단어 듣기"):"";
   const resume=rs?`<button class="cta" data-lsresume="1"><span class="cta-t">이어 하기 · ${rsKind}</span><span class="cta-s">${rs.i} / ${rs.q.length} · 남은 ${fmtMin(rs.q.slice(rs.i).reduce((t,it)=>t+lsDur(it),0))}</span></button>`:"";
   const vs=jaVoiceList();
   const voiceRow=vs.length>1?`<div class="lsn-grp"><span class="lbl">일본어 목소리</span><div class="row"><select class="lsn-voice" id="lsVoice"><option value="">자동 (기본)</option>${vs.map(v=>`<option value="${esc(v.name)}"${lsOpt.voice===v.name?" selected":""}>${esc(v.name)}</option>`).join("")}</select><button class="btn" data-lsvtest="1">들어보기</button></div><span class="note">대화의 남자 역할은 남자 목소리로 따로 읽어요.</span></div>`:"";
@@ -3369,7 +3376,7 @@ function lsSetupHtml(){
     :(lsOpt.use==="drive"?"버튼을 최소로 줄여요. 헷갈린 단어는 끝난 뒤 차를 세우고 골라요.":"헷갈린 단어를 바로 '다시 보기'에 넣는 큰 버튼이 생겨요.");
   return `<div class="lsn-setup">
     <div class="lsn-head"><h2>듣기 연습</h2><button class="mini" data-lsclose="1">닫기</button></div>
-    <div class="lsn-seg" role="group" aria-label="연습 방식"><button data-lsopt="kind" data-lsv="word" aria-pressed="${!SH}">단어 복습</button><button data-lsopt="kind" data-lsv="shadow" aria-pressed="${SH}">따라 말하기</button></div>
+    <div class="lsn-seg" role="group" aria-label="연습 방식"><button data-lsopt="kind" data-lsv="word" aria-pressed="${!SH}">듣고 뜻 떠올리기</button><button data-lsopt="kind" data-lsv="shadow" aria-pressed="${SH}">따라 말하기</button></div>
     <p class="note" style="margin:0">${SH?"화면을 보지 않고 소리 내어 따라 말해요. 적은 문장을 단계별로 반복해 입에 붙여요.":"일본어를 듣고 잠깐 쉬는 동안 뜻을 떠올린 뒤 정답을 들어요."} 복습 칸이나 날짜는 바꾸지 않아요.</p>
     ${SH?`<ol class="lsn-steps"><li>듣기: 뜻을 확인하며 두 번</li><li>뒤에서부터 쌓기: 문장 끝(경어 부분)부터 덧붙여 천천히</li><li>전체 따라 말하기: 듣고 → 말하고 → 다시 듣고 비교</li><li>겹쳐 말하기: 소리와 동시에 (진짜 쉐도잉)</li>${lsOpt.use==="gym"?"<li>한국어를 듣고 일본어로 말하기</li>":""}</ol>`:""}
     ${resume}
@@ -3440,6 +3447,7 @@ function lsDoneHtml(){
 }
 function lsClick(t,d){
   if(d.lsunpick){ls.pick=null;lsDraw();return;}
+  if(d.lsdpick){lsClose();sp.mode="dlg";sp.dv="list";setTab("speak");window.scrollTo(0,0);toast("대화 왼쪽 네모를 눌러 고른 뒤 아래 '듣기'를 누르세요.");return true;}
   if(d.lsclose){lsClose();return true;}
   if(d.shhard){shToggleHard(d.shhard);lsDraw();return true;}
   if(d.shskip){shToggleSkip(d.shskip);lsDraw();return true;}
