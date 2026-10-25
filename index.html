@@ -288,7 +288,7 @@ textarea{min-height:76px;font-family:var(--f-jp);resize:vertical}
 .mrow .meta{min-width:0}
 .mrow .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:end}
 .mrow.editing{grid-template-columns:minmax(0,1fr)}
-.mlist{display:grid;gap:6px}.dlwords>summary{cursor:pointer}.dlwords .chip.on{border-color:var(--accent)}.dlwords .chip.on::before{content:"● ";color:var(--accent);font-size:.7em}.dwcard{display:grid;gap:4px;padding:10px 12px;border-radius:10px;background:var(--bg);margin-top:8px}.mfold>summary{cursor:pointer;list-style:none}.mfold>summary::-webkit-details-marker{display:none}.mfold>summary::before{content:"▸ ";color:var(--muted,#888)}.mfold[open]>summary::before{content:"▾ "}.mfold[open]>summary{margin-bottom:10px}
+.mlist{display:grid;gap:6px}.progline{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;width:100%;text-align:left;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);font:inherit;font-size:.9rem;cursor:pointer;margin:12px 0}.progline .prow-a{margin-left:auto}.dlwords>summary{cursor:pointer}.dlwords .chip.on{border-color:var(--accent)}.dlwords .chip.on::before{content:"● ";color:var(--accent);font-size:.7em}.dwcard{display:grid;gap:4px;padding:10px 12px;border-radius:10px;background:var(--bg);margin-top:8px}.mfold>summary{cursor:pointer;list-style:none}.mfold>summary::-webkit-details-marker{display:none}.mfold>summary::before{content:"▸ ";color:var(--muted,#888)}.mfold[open]>summary::before{content:"▾ "}.mfold[open]>summary{margin-bottom:10px}
 .toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);border-radius:10px;padding:10px 14px;display:flex;gap:12px;align-items:center;font-size:.88rem;max-width:calc(100% - 32px);z-index:20;box-shadow:0 6px 20px rgba(0,0,0,.18)}
 .toast button{font:inherit;font-weight:600;background:transparent;border:0;color:var(--accent-soft);cursor:pointer;text-decoration:underline}
 @media (max-width:560px){
@@ -668,6 +668,7 @@ html[data-furi] .lsn-play .lsn-hid rt,html[data-furi] .lsn-play .lsn-hid ruby rt
   <section id="speak" hidden></section>
   <div class="gpop" id="gpop" hidden role="dialog" aria-label="문법 설명"></div>
   <section id="manage" hidden>
+    <div id="recBox"></div>
     <div class="panel">
       <h2>새 단어 추가</h2>
       <p class="note" style="margin:0">한 줄에 하나씩 입력하거나 txt 파일을 불러오세요. 이미 있는 단어는 건너뛰어요.<span class="ai-only"> <b>자동으로 채우기</b>를 누르면 Claude가 읽기·뜻·예문·짝꿍 표현을 채워서 바로 넣어요.<br><b>한국어 뜻</b>으로 적으면(예: 회의록, 납기 지연) 일본어 후보를 보여 드리고, 고른 단어만 넣어요.</span></p>
@@ -1630,11 +1631,11 @@ function renderToday(){
       <button class="qk" data-qk="sjpt"><span class="qk-i" aria-hidden="true">🎙</span><span>SJPT</span></button>
       <button class="qk" id="goFlag"${flags?"":" disabled"}><span class="qk-i" aria-hidden="true">↺</span><span>다시 보기${flags?` ${flags}`:""}</span></button>
     </div>
+    ${(()=>{const lw=words.filter(w=>w.kind!=="gram"&&!isNew(w)).length,G=words.filter(w=>w.kind==="gram"),lg=G.filter(w=>!isNew(w)).length,ps=sjpt.filter(q=>q.cnt).length;
+      return `<button class="progline" data-gorec="1" aria-label="학습 기록 보기"><span class="lbl">내 진도</span><span>외운 단어·표현 <b>${lw}</b></span>${G.length?`<span>문법 <b>${lg}</b>/${G.length}</span>`:""}${sjpt.length?`<span>SJPT <b>${ps}</b>/${sjpt.length}</span>`:""}<span class="prow-a" aria-hidden="true">›</span></button>`;})()}
     ${favHtml}
-    ${calendarHtml()}
     ${bkWarn?`<div class="bkline"><span>${bkDays===null?"아직 단어장을 백업한 적이 없어요.":`마지막 백업이 ${bkDays}일 전이에요.`}</span><button class="link" id="bkNow">지금 백업</button></div>`:""}`;
   const pm=$("progMore");if(pm)pm.ontoggle=e=>{state.progOpen=e.target.open;};
-  const cf=$("calFold");if(cf)cf.ontoggle=e=>{state.calOpen=e.target.open;};
 }
 function renderSettings(){
   const b=$("setBody");if(!b)return;
@@ -2324,6 +2325,7 @@ function renderDrafts(){
 }
 function renderManage(){
   if(!loaded) return;
+  $("recBox").innerHTML=calendarHtml();{const cf=$("calFold");if(cf)cf.ontoggle=e=>{state.calOpen=e.target.open;};}
   $("mCount").textContent=`${words.length}개`;
   if(state.editing||state.q)$("mFold").open=true;
   if(!$("mFold").open){$("mlist").innerHTML="";return;}
@@ -2861,8 +2863,9 @@ document.addEventListener("click",async e=>{
   if(d.say&&d.sayas){dlgPlay=null;speechSynthesis.cancel();speakAs(d.say,d.sayas);return;}
   if(d.say){speak(d.say);return;}
   // 오늘
-  if(d.day!==undefined){state.calDay=d.day&&d.day!==state.calDay?d.day:null;renderToday();return;}
-  if(d.missgo){const e=dayLog(d.missgo);quiz.listIds=(e&&e.miss)||[];startSession("list");return;}
+  if(d.day!==undefined){state.calDay=d.day&&d.day!==state.calDay?d.day:null;rerender();return;}
+  if(d.missgo){const e=dayLog(d.missgo);quiz.listIds=(e&&e.miss)||[];if(state.tab!=="today")setTab("today");startSession("list");return;}
+  if(d.gorec){setTab("manage");window.scrollTo(0,0);return;}
   if(t.id==="goToday"){startSession("today");return;}
   if(t.id==="goFlag"){startSession("flag");return;}
   if(t.id==="goPractice"){startSession("practice");return;}
@@ -2873,7 +2876,7 @@ document.addEventListener("click",async e=>{
   if(t.id==="openSet"||t.id==="openSet2"||t.dataset.openset){openSettings();return;}
   if(d.closeset){$("setSheet").hidden=true;return;}
   if(t.id==="bkNow2"){$("setSheet").hidden=true;setTab("manage");backup("json");return;}
-  if(d.calm){const [yy,mm]=(state.calMonth||today().slice(0,7)).split("-").map(Number);const nd=new Date(yy,mm-1+(+d.calm),1);state.calMonth=`${nd.getFullYear()}-${String(nd.getMonth()+1).padStart(2,"0")}`;state.calDay=null;renderToday();return;}
+  if(d.calm){const [yy,mm]=(state.calMonth||today().slice(0,7)).split("-").map(Number);const nd=new Date(yy,mm-1+(+d.calm),1);state.calMonth=`${nd.getFullYear()}-${String(nd.getMonth()+1).padStart(2,"0")}`;state.calDay=null;rerender();return;}
   if(t.id==="goLeech"){startSession("leech");return;}
   if(t.id==="goTriage"){triStart();return;}
   if(d.src){srcGo(d.src);return;}
@@ -3238,7 +3241,7 @@ function lsBuild(){
 }
 function lsResumable(){
   const s=lsSaved;if(!s||!Array.isArray(s.q)||!s.q.length||(s.i|0)>=s.q.length)return null;
-  if(!s.date||s.date<addDays(today(),-3))return null;
+  if(!s.date||s.date<addDays(today(),-1)||!(s.i|0))return null;
   const ok=s.q.filter(it=>it.k==="s"?!!it.s:it.k==="d"?dialogs.some(d=>d.id===it.id):words.some(w=>w.id===it.id));
   return ok.length>(s.i|0)?s:null;
 }
