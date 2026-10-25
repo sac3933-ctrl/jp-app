@@ -228,6 +228,7 @@ ruby rt{font-size:.55em;color:var(--muted);font-weight:400;white-space:nowrap;le
 .dex .ja{font-family:var(--f-jp);font-size:1.08rem;line-height:2.1}.dex .ko{color:var(--muted);font-size:.9rem}
 .dexn{justify-self:start;font-size:.8rem;margin-top:2px}
 .dmore{border-top:1px solid var(--line);padding-top:8px}
+.dnote{font-size:.88rem;line-height:1.6;color:var(--ink);background:var(--accent-soft);border-radius:10px;padding:10px 12px}
 .dmore>summary{cursor:pointer;color:var(--muted);font-size:.85rem;list-style:none;display:flex;align-items:center;gap:6px;padding:4px 0}
 .dmore>summary::-webkit-details-marker{display:none}
 .dmore>summary::before{content:"＋";display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;border:1px solid var(--line);font-size:.75rem}
@@ -674,7 +675,7 @@ html[data-furi] .lsn-play .lsn-hid rt,html[data-furi] .lsn-play .lsn-hid ruby rt
 
 <script>
 /* ================= 기본 ================= */
-const CATS={rep:"보고·회의",chem:"공정·화학",biz:"사업·경영",rnd:"연구개발·특허",site:"설비·작업·품질",expr:"업무 정형 표현",gram:"문법·표현",gen:"일반 어휘",life:"일상 회화",trip:"여행·생활",feel:"감정·표현",n3:"JLPT N3",n2:"JLPT N2"};
+const CATS={rep:"보고·회의",chem:"공정·화학",biz:"사업·경영",rnd:"연구개발·특허",site:"설비·작업·품질",expr:"업무 정형 표현",gram:"문법·표현",gen:"일반 어휘",life:"일상 회화",trip:"여행·생활",feel:"감정·표현",kg:"회화 문법",kv:"회화 단어",n3:"JLPT N3",n2:"JLPT N2"};
 const DECKS={all:"전체",work:"업무",daily:"일상"};
 /* JLPT 추정 급수 (공식 어휘 목록이 없어 참고용) */
 const JLS=["N5","N4","N3","N2","N1","x"],JLN={N5:"N5",N4:"N4",N3:"N3",N2:"N2",N1:"N1",x:"급수 외"};
@@ -945,7 +946,7 @@ function fair(w,x,key){
 }
 function makePart(w,key,noMates){
   const f=ANS[key],right=f(w);
-  let pool=shuffle(words.filter(x=>x.id!==w.id&&f(x)&&f(x)!==right&&(!!x.kind)===(!!w.kind)));
+  let pool=shuffle(words.filter(x=>x.id!==w.id&&f(x)&&f(x)!==right&&(x.kind||"")===(w.kind||"")));
   const same=pool.filter(x=>deckOf(x)===deckOf(w));if(same.length>=8)pool=same;
   const mateIds=new Set((w.g&&groups[w.g]?groups[w.g].ids:[]).filter(id=>id!==w.id));
   const mates=noMates?[]:pool.filter(x=>mateIds.has(x.id)).slice(0,2);
@@ -972,7 +973,7 @@ const sinoSame=w=>{const kr=normKo(w.kr);if(!kr)return false;const m=normKo(w.m)
 function makeQuestion(w){
   const L=lvOf(w),K=hasKanji(w),S=K&&sinoSame(w),exs=examples(w).filter(e=>/\[[^\]]+\]/.test(e.src)),hasCol=/\[[^\]]+\]/.test(w.col||"");
   const t=[];
-  if(w.kind==="expr"){ // 정형 표현: 문장 속에서 고르기 → 뜻 보고 떠올리기·쓰기
+  if(w.kind==="expr"||w.kind==="gram"){ // 정형 표현·문법 패턴: 문장 속에서 고르기 → 뜻 보고 떠올리기·쓰기
     const canType=String(w.r||"").replace(/^[～~]/,"").length<=16;
     if(L<=1){t.push("mean","word");if(exs.length)t.push("blank","blank");}
     else if(L===2){t.push("word","recall");if(exs.length)t.push("blank","blank");if(canType)t.push("produce");}
@@ -1144,7 +1145,7 @@ function detailHtml(w,opt={}){
   const g=w.g&&groups[w.g],mates=g?g.ids.filter(id=>id!==w.id).map(id=>words.find(x=>x.id===id)).filter(Boolean):[];
   const exs=examples(w),ei=(state.exIdx[w.id]||0)%Math.max(1,exs.length),ex=exs[ei];
   const krShow=w.kr&&normKo(w.kr)!==normKo(String(w.m).split(/[,，·/(（]/)[0]); // 뜻과 같은 한자음(販売=판매)은 생략
-  const kan=KAN.test(w.w||"")&&w.kind!=="expr";
+  const kan=KAN.test(w.w||"")&&!w.kind;
   const exBtns=opt.noExBtn?"":`<button class="mini" data-addex="${w.id}">예문 직접 추가</button>${sample?`<button class="mini" data-genex="${w.id}">예문 더 만들기</button>`:""}${ex&&ei>0&&ex.extra?`<button class="mini" data-delex="${w.id}">이 예문 삭제</button>`:""}`;
   const dlg=(()=>{if(state.tab==="today"&&quiz.phase==="play")return "";const ds=dialogs.filter(x=>(x.wordIds||[]).includes(w.id));
       return sample||ds.length?`<div class="xrow"><span class="xl">상황 대화</span><span class="row" style="gap:6px">${ds.slice(0,3).map(x=>`<button class="mini" data-dlgopen="${x.id}">${esc(x.title)}</button>`).join("")}${sample?`<button class="mini" data-dlgw="${w.id}">이 단어로 대화 만들기</button>`:""}</span></div>`:"";})();
@@ -1153,15 +1154,16 @@ function detailHtml(w,opt={}){
     w.col?`<div class="xrow"><span class="xl">짝꿍 표현</span><span><span class="colx" lang="ja">${rubyHtml(colSrc(w))}${spk(ttsOf(colSrc(w),w).replace(/^.*→\s*/,""),"짝꿍 표현")}</span>${w.cm?`<span class="ko">${esc(w.cm)}</span>`:""}</span></div>`:"",
     kan?`<div class="xrow"><span class="xl">한자</span>${kanjiHtml(w)}</div>`:"",
     mates.length?`<div class="xrow"><span class="xl">비슷한 말</span><span><span lang="ja">${mates.map(x=>esc(x.w)).join(" · ")}</span><span class="gnote">${esc(g.note)}</span></span></div>`:"",
-    w.note?`<div class="xrow"><span class="xl">참고</span><span>${esc(w.note)}</span></div>`:"",
+    w.note&&w.kind!=="gram"?`<div class="xrow"><span class="xl">참고</span><span>${esc(w.note)}</span></div>`:"",
     exBtns?`<div class="row">${exBtns}</div>`:"",
     !opt.noExBtn&&state.addEx===w.id?`<div class="exform"><textarea id="exJa" lang="ja" placeholder="일본어 예문 (예: 毎週金曜日に進捗報告を行う。)"></textarea><input id="exKo" placeholder="한국어 뜻 (비워 두면 Claude가 채워요)"><div class="row"><button class="btn primary" data-saveex="${w.id}">저장</button><button class="btn" data-cancelex="1">취소</button><span class="note" id="exMsg"></span></div><span class="note">외울 단어는 자동으로 표시하고, 후리가나도 자동으로 붙여요.</span></div>`:"",
     dlg
   ].filter(Boolean).join("");
-  const moreLbl=[w.col?"짝꿍 표현":"",kan?"한자":"",mates.length?"비슷한 말":""].filter(Boolean).join(" · ")||"예문 추가";
+  const moreLbl=[w.col?"짝꿍 표현":"",kan?"한자":"",mates.length?"비슷한 말":"",w.note&&w.kind!=="gram"?"참고":""].filter(Boolean).join(" · ")||"예문 추가";
   const open=dMore||state.addEx===w.id;
   return `<div class="detail">
     ${opt.head===false?"":`<div class="dhead"><span class="read">${esc(w.r)}</span>${spk(w.r||w.w,"단어")}</div><div class="dmean">${esc(w.m)}${krShow?`<span class="dkr">${esc(w.kr)}</span>`:""}</div>`}
+    ${w.kind==="gram"&&w.note?`<div class="dnote">${esc(w.note)}</div>`:""}
     ${opt.head===false&&krShow?`<div class="dmean dmean-s"><span class="dkr">${esc(w.kr)}</span></div>`:""}
     ${ex?`<div class="dex"><span class="ja" lang="ja">${rubyHtml(ex.src)}${spk(ttsOf(ex.src,w),"예문")}</span><span class="ko">${esc(ex.ko)}</span>${exs.length>1?`<button class="link dexn" data-nextex="${w.id}">다른 예문 ${ei+1}/${exs.length} ›</button>`:""}</div>`:""}
     ${more?`<details class="dmore"${open?" open":""}><summary>${esc(moreLbl)}</summary><div class="dmore-b">${more}</div></details>`:""}
@@ -1427,7 +1429,7 @@ function renderPlay(){
   const nextTxt=q.practice?"연습이라 진행도와 복습 날짜는 그대로예요":q.blocked?"오늘 틀렸던 단어라 칸은 다음에 맞혀야 올라가요":q.sameDay?"오늘 이미 한 칸 올린 단어예요":q.result?`다음 복습: ${q.nextDue===addDays(today(),1)?"내일":q.nextDue}`:"내일 다시 나와요";
   box.innerHTML=`<div class="panel">${head}
     <div class="qask qaskrow"><span>${Q.ask}${leechOf(q.w)?' <span class="badge">자주 틀림</span>':""}</span></div>
-    <div class="qprompt ${Q.pcls}${q.w.kind==="expr"&&Q.pcls!=="sent"?" qp-long":""}" ${Q.pcls==="ko"?"":'lang="ja"'}>${prompt}</div>
+    <div class="qprompt ${Q.pcls}${(q.w.kind==="expr"||q.w.kind==="gram")&&Q.pcls!=="sent"?" qp-long":""}" ${Q.pcls==="ko"?"":'lang="ja"'}>${prompt}</div>
     ${sub?`<div class="qsub">${sub}</div>`:""}
     ${body}
     ${done?`<div class="fb"><div class="verdict ${okNow?"ok":"no"}">${verdict}</div>
@@ -2280,9 +2282,10 @@ async function readRestore(file){
     const ids=new Set(words.map(w=>w.id)),names=new Set(words.map(w=>w.w));
     const add=data.words.filter(w=>w&&w.w&&!ids.has(w.id)&&!names.has(w.w));
     const gAdd=(Array.isArray(data.groups)?data.groups:[]).filter(g=>g&&g.id&&!groups[g.id]);
-    restorePlan={add,gAdd,kanji:data.kanji&&typeof data.kanji==="object"?data.kanji:null};
-    if(!add.length&&!gAdd.length){$("bkMsg").textContent=`백업 파일의 단어 ${data.words.length}개가 모두 이미 있어요. 추가할 게 없어요.`;return;}
-    $("bkMsg").textContent=`백업 파일에서 지금 없는 단어 ${add.length}개${gAdd.length?`, 비슷한 말 묶음 ${gAdd.length}개`:""}를 찾았어요. 이미 있는 단어는 건드리지 않아요.`;
+    const dAdd=(Array.isArray(data.dialogs)?data.dialogs:[]).filter(d=>d&&d.id&&Array.isArray(d.lines)&&!dialogs.some(x=>x.id===d.id));
+    restorePlan={add,gAdd,dAdd,kanji:data.kanji&&typeof data.kanji==="object"?data.kanji:null};
+    if(!add.length&&!gAdd.length&&!dAdd.length){$("bkMsg").textContent=`백업 파일의 단어 ${data.words.length}개가 모두 이미 있어요. 추가할 게 없어요.`;return;}
+    $("bkMsg").textContent=`백업 파일에서 지금 없는 단어 ${add.length}개${gAdd.length?`, 비슷한 말 묶음 ${gAdd.length}개`:""}${dAdd.length?`, 상황 대화 ${dAdd.length}개`:""}를 찾았어요. 이미 있는 단어는 건드리지 않아요.`;
     $("restoreActs").hidden=false;
   }catch(_){$("bkMsg").className="note err";$("bkMsg").textContent="백업 파일을 읽지 못했어요. 이 단어장에서 받은 '전체 백업' 파일(.json)인지 확인해 주세요.";}
 }
@@ -2292,6 +2295,7 @@ async function doRestore(){
   try{
     for(const w of restorePlan.add){const {id,...rest}=w;const clean={};FIELDS.forEach(k=>{if(rest[k]!==undefined)clean[k]=rest[k];});await (id&&/^[A-Za-z0-9_.~:@+-]{1,200}$/.test(id)?col.doc(id):col.doc()).set(clean);n++;}
     for(const g of restorePlan.gAdd){const {id,...rest}=g;await db.doc("groups/"+id).set(rest);}
+    for(const dl of restorePlan.dAdd||[]){const {id,...rest}=dl;await db.collection("dialogs").doc(id).set(rest);}
     if(restorePlan.kanji){kk={...restorePlan.kanji,...kk};setMeta("kanji",{map:kk});}
     $("bkMsg").textContent=`단어 ${n}개를 되살렸어요.`;
   }catch(_){$("bkMsg").className="note err";$("bkMsg").textContent=`${n}개까지 되살리고 멈췄어요. 다시 불러와서 이어서 할 수 있어요.`;}
