@@ -1345,6 +1345,7 @@ function renderSrc(){
   else if(total){const r=Math.min(rq.list.length,size),n=Math.min(nw.length,Math.max(0,size-r));
     main=`<button class="cta" id="goToday"><span class="cta-t">학습 시작</span><span class="cta-s">${[r?`복습 ${r}`:"",n?`새로 배울 것 ${n}`:""].filter(Boolean).join(" · ")}</span></button>`;}
   else if(moreNew) main=`<p class="note" style="margin:0;text-align:center">오늘 몫은 다 했어요. 더 하고 싶으면 이어서 배워도 돼요.</p><button class="cta cta2" id="goMoreNew"><span class="cta-t">더 배우기</span><span class="cta-s">다음 ${Math.min(10,moreNew)}개</span></button>`;
+  else if(!ws.length) main=`<p class="note" style="margin:0;text-align:center">아직 이 자료가 없어요. 더보기 → 백업 불러오기로 받아 둔 자료 파일(.json)을 넣으면 생겨요.</p><button class="btn" data-gomanage="1">더보기로 가기</button>`;
   else main=`<p class="note" style="margin:0;text-align:center">이 자료는 다 배웠어요. 복습할 때가 되면 다시 나와요.</p>`;
   const flags=ws.filter(flagOf).length,leech=ws.filter(leechOf).length;
   box.innerHTML=`<div class="panel srcp">
@@ -1473,6 +1474,7 @@ function renderGram(){
   const q=gs.q.trim().toLowerCase(),T=gs.topic;
   const list=all.filter(w=>(T==="all"||(T==="fav"?w.fav:w.gt===T))&&(!q||[w.w,w.r,w.m,w.note].some(x=>String(x||"").toLowerCase().includes(q))));
   const learned=all.filter(w=>!isNew(w)).length;
+  if(!all.length){box.innerHTML=`<div class="panel"><h2 style="margin:0">문법 사전</h2><p class="note" style="margin:0">아직 문법 자료가 없어요. 더보기 → 백업 불러오기로 받아 둔 자료 파일(.json)을 넣으면 생겨요.</p><div class="row"><button class="btn primary" data-gomanage="1">더보기로 가기</button></div></div>`;return;}
   if(!$("gList")){
     box.innerHTML=`<div class="panel gtop">
       <div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">문법 사전</h2><span class="note" id="gCount"></span></div>
@@ -2838,6 +2840,7 @@ document.addEventListener("click",async e=>{
   if(t.id==="gBack"){gs.view=null;renderGram();return;}
   if(d.gquiz){const ids=d.gquiz.split(",");quiz.listIds=ids;quiz.from="gram";quiz.src=null;startSession("list");if(state.tab!=="today")setTab("today");return;}
   if(t.id==="gLearn"){srcGo("kg");return;}
+  if(t.dataset&&t.dataset.gomanage){if(quiz.phase==="src")leaveQuiz(true);setTab("manage");window.scrollTo(0,0);return;}
   if(d.gpclose){$("gpop").hidden=true;return;}
   if(d.pick){homePick(d.pick);return;}
   if(t.id==="pickNext"){state.pickOff=(state.pickOff||0)+1;renderToday();return;}
