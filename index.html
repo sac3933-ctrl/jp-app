@@ -978,7 +978,7 @@ const QT={
   kread:{ask:"이 한자어를 일본어로 어떻게 읽을까요?",prompt:w=>esc(w.w),pcls:"",parts:["read"]},
   mean:{ask:"이 표현의 뜻은?",prompt:w=>esc(w.w),pcls:"",parts:["mean"]},
   word:{ask:"이 뜻에 맞는 일본어는?",prompt:w=>esc(w.m),pcls:"ko",parts:["word"]},
-  blank:{ask:"빈칸에 들어갈 단어는?",pcls:"sent",parts:["word"]},
+  blank:{ask:"빈칸에 들어갈 말은?",pcls:"sent",parts:["word"]},
   col:{ask:"짝꿍 표현을 완성하세요",prompt:w=>rubyHtml(colSrc(w).replace(/\[[^\]]+\]/g,"（　　　）")),sub:w=>esc(w.m),pcls:"sent",parts:["word"]},
   recall:{ask:"이 뜻의 일본어를 떠올려 보세요",prompt:w=>esc(w.m),pcls:"ko",parts:[]},
   type:{ask:"읽기를 입력하세요",prompt:w=>esc(w.w),pcls:"",parts:[]},
@@ -1013,6 +1013,26 @@ function makePart(w,key,noMates){
   const items=shuffle([w,...picked]);
   return {key,label:PART_LABEL[key],opts:items.map(f),src:items,right,jp:key!=="mean"};
 }
+// 문형·정형 표현 빈칸: 보기도 '문장에 들어갈 모양'으로 — 다른 문형의 예문 괄호 부분에서 고름
+const brPlain=src=>{const m=String(src||"").match(/\[([^\]]+)\]/);return m?m[1].replace(/\{([^|}]+)\|[^}]+\}/g,"$1"):"";};
+function makeBlankPart(w,ex){
+  const right=brPlain(ex.src);if(!right)return makePart(w,"word",true);
+  const kanaStart=t=>/^[\u3041-\u309f]/.test(t),last=t=>t.slice(-1),rl=right.length;
+  const cands=[];
+  for(const x of words){
+    if(x.id===w.id||(x.kind||"")!==(w.kind||""))continue;
+    const opts=examples(x).map(e=>brPlain(e.src)).filter(t=>t&&t!==right&&!right.includes(t)&&!t.includes(right));
+    if(!opts.length)continue;
+    const sc=t=>(kanaStart(t)===kanaStart(right)?3:0)+(last(t)===last(right)?2:0)-Math.min(Math.abs(t.length-rl),8)*.6+Math.random()*1.5;
+    const best=opts.map(t=>[t,sc(t)]).sort((a,b)=>b[1]-a[1])[0];
+    cands.push({x,t:best[0],sc:best[1]+(x.gt&&x.gt===w.gt?-1:0)});
+  }
+  cands.sort((a,b)=>b.sc-a.sc);
+  const seen=new Set([right]),picked=[];
+  for(const c of cands){if(!seen.has(c.t)){seen.add(c.t);picked.push(c);}if(picked.length===3)break;}
+  const items=shuffle([{x:w,t:right},...picked]);
+  return {key:"blank",label:"빈칸",opts:items.map(i=>i.t),src:items.map(i=>i.x),right,jp:true};
+}
 // 뜻이 한국 한자음과 같은 단어(環境=환경): 뜻으로 묻으면 한자만 보고 풀리므로 읽기 위주로 낸다
 const normKo=s=>String(s||"").replace(/\s/g,"");
 const sinoSame=w=>{const kr=normKo(w.kr);if(!kr)return false;const m=normKo(w.m),first=m.split(/[,，·/(（]/)[0];return first===kr||m===kr;};
@@ -1026,7 +1046,7 @@ function makeQuestion(w){
     else{t.push("recall","recall");if(exs.length)t.push("blank");if(canType)t.push("produce","produce");}
     const type=pick(t),q={w,type,picks:[],result:undefined};
     if(type==="blank")q.ex=pick(exs);
-    q.parts=QT[type].parts.map(k=>makePart(w,k,true));
+    q.parts=type==="blank"?[makeBlankPart(w,q.ex)]:QT[type].parts.map(k=>makePart(w,k,true));
     return q;
   }
   if(S){ // 한자음=뜻: 읽기 고르기 → 읽기 입력 → 뜻 보고 읽기 입력 순으로
@@ -1168,7 +1188,7 @@ const doneChip=w=>`<button class="btn donechip" data-done="${w.id}" aria-pressed
 function next(){quiz.i++;while(quiz.i<quiz.items.length&&!solved(quiz.items[quiz.i])&&wordDone(quiz.items[quiz.i]))quiz.i++;if(quiz.i>=quiz.items.length)quiz.phase="done";renderToday();window.scrollTo({top:0});}
 function srcNote(p,i){
   const x=p.src&&p.src[i];if(!x)return "";
-  const bits=p.key==="word"?[x.r,x.m]:p.key==="read"?[x.w,x.m]:[x.w,x.r];
+  const bits=p.key==="blank"?[x.w,x.m]:p.key==="word"?[x.r,x.m]:p.key==="read"?[x.w,x.m]:[x.w,x.r];
   return `<span class="src">${bits.filter(Boolean).map(esc).join(" · ")}</span>`;
 }
 
@@ -1653,7 +1673,7 @@ function renderPlay(){
   const wp=wordProgress(quiz.items,o=>o.w.id);
   const kind=q.type==="intro"?"new":q.kind||(quiz.mode==="today"?(quiz.items.some(x=>x.type==="intro"&&x.w===q.w)?"check":"review"):"");
   const KIND={new:["새 단어 읽기","k-new"],check:["새 단어 확인","k-check"],review:["복습","k-rev"],practice:["연습 · 기록 안 됨","k-check"]};
-  const head=`<div class="qtop"><span>${KIND[kind]?`<span class="kind ${KIND[kind][1]}">${KIND[kind][0]}</span> `:""}단어 ${wp.done} / ${wp.total}개 끝${quiz.mode==="flag"?" · 다시 보기 연습":quiz.mode==="list"?" · 틀린 단어 다시 풀기":quiz.mode==="leech"?" · 자주 틀리는 단어":""}</span><button class="qhomebtn" id="qstop" aria-label="처음 화면으로 (푼 데까지 저장)"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>처음으로</span></button></div>
+  const head=`<div class="qtop"><span>${KIND[kind]?`<span class="kind ${KIND[kind][1]}">${KIND[kind][0]}</span> `:""}${quiz.items.every(o=>o.w&&o.w.kind==="gram")?"문형":"단어"} ${wp.done} / ${wp.total}개 끝${quiz.mode==="flag"?" · 다시 보기 연습":quiz.mode==="list"?" · 틀린 단어 다시 풀기":quiz.mode==="leech"?" · 자주 틀리는 단어":""}</span><button class="qhomebtn" id="qstop" aria-label="처음 화면으로 (푼 데까지 저장)"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>처음으로</span></button></div>
     <div class="qbar"><i style="width:${quiz.i/n*100}%"></i></div>`;
   if(q.type==="intro"){
     const w=q.w;
