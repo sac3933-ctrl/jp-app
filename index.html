@@ -1720,7 +1720,7 @@ function renderToday(){
     ${bkWarn?`<div class="bkline"><span>${bkDays===null?"아직 단어장을 백업한 적이 없어요.":`마지막 백업이 ${bkDays}일 전이에요.`}</span><button class="link" id="bkNow">지금 백업</button></div>`:""}`;
   const pm=$("progMore");if(pm)pm.ontoggle=e=>{state.progOpen=e.target.open;};
 }
-const APPV="10.25-6";
+const APPV="10.26-1";
 function renderSettings(){
   const b=$("setBody");if(!b)return;
   b.innerHTML=`<div class="setrow"><span class="lbl">공부 범위</span><div class="row"><span>${esc(scopeLabel())} (${scopeN()}개)</span><button class="btn" id="openScope2">바꾸기</button></div><span class="note">듣기·따라 말하기·말로 답하기에 쓸 자료 범위예요.</span></div>
@@ -3107,7 +3107,16 @@ function ttsOf(src,w){
     return ww&&isJargon(ww)?inner.replace(RUBY,"$2"):base;
   }).replace(RUBY,"$1").replace(/[\[\]～~〜]/g,"");
 }
-const wordTts=w=>{const b=String(w.w||"").replace(/^[～~〜]+/,"");return isJargon(w)||[...b].length<=1?String(w.r||b).replace(/^[～~〜]+/,""):b;};
+// 읽기용 텍스트: 가나만으로 된 읽기가 は·へ·を로 시작하면 조사(わ·え·お)로 읽히므로 가타카나로 바꿔 읽힘
+const kataOf=t=>String(t).replace(/[\u3041-\u3096]/g,c=>String.fromCharCode(c.charCodeAt(0)+0x60));
+const ttsKana=t=>/^[\u3041-\u309fー・、\s]+$/.test(t)&&/^[はへを]/.test(t)?kataOf(t):t;
+const wordTts=w=>{
+  const raw=String(w.w||"");
+  // 문형·정형 표현의 ～ 는 '나니나니(何々)'로 읽어 줌: ～によって → なになに によって
+  if(/[～~〜]/.test(raw)&&(w.kind==="gram"||w.kind==="expr"))return raw.replace(/[（(][^）)]*[）)]/g,"").replace(/[～~〜]/g,"なになに").replace(/[／\/]/g,"、");
+  const b=raw.replace(/^[～~〜]+/,"");
+  return ttsKana(isJargon(w)||[...b].length<=1?String(w.r||b).replace(/^[～~〜]+/,""):b);
+};
 const jaVoiceList=()=>{try{return speechSynthesis.getVoices().filter(v=>/^ja/i.test(v.lang));}catch(_){return [];}};
 const prefVoice=()=>lsOpt.voice?jaVoiceList().find(v=>v.name===lsOpt.voice)||null:null;
 
