@@ -848,11 +848,12 @@ function rubyHtml(src,hideTarget){
 }
 try{speechSynthesis.onvoiceschanged=()=>{if(state.tab==="speak"&&sp.mode==="dlg")renderDlg();};}catch(_){}
 const canSpeak=typeof window.speechSynthesis!=="undefined"&&typeof SpeechSynthesisUtterance!=="undefined";
+const PIT=()=>{const p=+(settings&&settings.pitch);return p>0?p:1;};const pit=x=>Math.max(.5,Math.min(2,(x||1)*PIT()));
 function jaVoicePick(){try{const vs=speechSynthesis.getVoices().filter(v=>/^ja/i.test(v.lang));const want=(typeof lsOpt!=="undefined"&&lsOpt.voice)||(settings&&settings.listen&&settings.listen.voice)||"";return vs.find(v=>v.name===want)||bestV(vs)||null;}catch(_){return null;}}
 function speak(text,rate){
   if(!canSpeak||!text) return;
   try{const u=new SpeechSynthesisUtterance(text);u.lang="ja-JP";u.rate=rate||.9;
-    const v=jaVoicePick();if(v)u.voice=v;
+    const v=jaVoicePick();if(v)u.voice=v;u.pitch=pit(1);
     speechSynthesis.cancel();speechSynthesis.speak(u);}catch(_){}
 }
 const SPK='<svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true"><path d="M3 8h3l4-3v10l-4-3H3z" fill="currentColor"/><path d="M13 7a4 4 0 0 1 0 6M15 5a7 7 0 0 1 0 10" stroke="currentColor" fill="none" stroke-width="1.6" stroke-linecap="round"/></svg>';
@@ -1609,7 +1610,7 @@ function sjEnter(){
   r.phase=r.timed?"think":"show";r.heard="";r.lv="a1";const P=sjPart(q.part);
   renderSpeak();
   try{speechSynthesis.cancel();}catch(_){}
-  if(canSpeak){const u=new SpeechSynthesisUtterance(ttsOf(q.q));u.lang="ja-JP";u.rate=.95;const v=jaVoicePick();if(v)u.voice=v;u.onend=()=>{if(sj.run===r&&r.phase==="think")sjTick(q.think??P.think,"think");};speechSynthesis.speak(u);}
+  if(canSpeak){const u=new SpeechSynthesisUtterance(ttsOf(q.q));u.lang="ja-JP";u.rate=.95;u.pitch=pit(1);const v=jaVoicePick();if(v)u.voice=v;u.onend=()=>{if(sj.run===r&&r.phase==="think")sjTick(q.think??P.think,"think");};speechSynthesis.speak(u);}
   if(r.timed&&!canSpeak)sjTick(q.think??P.think,"think");
 }
 function sjTick(sec,phase){
@@ -1725,11 +1726,12 @@ function renderToday(){
     ${bkWarn?`<div class="bkline"><span>${bkDays===null?"아직 단어장을 백업한 적이 없어요.":`마지막 백업이 ${bkDays}일 전이에요.`}</span><button class="link" id="bkNow">지금 백업</button></div>`:""}`;
   const pm=$("progMore");if(pm)pm.ontoggle=e=>{state.progOpen=e.target.open;};
 }
-const APPV="10.26-2";
+const APPV="10.27-1";
 function renderSettings(){
   const b=$("setBody");if(!b)return;
   b.innerHTML=`<div class="setrow"><span class="lbl">공부 범위</span><div class="row"><span>${esc(scopeLabel())} (${scopeN()}개)</span><button class="btn" id="openScope2">바꾸기</button></div><span class="note">듣기·따라 말하기·말로 답하기에 쓸 자료 범위예요.</span></div>
     ${canSpeak?(()=>{const vs=jaVoiceList(),cur=(settings.listen&&settings.listen.voice)||"";return `<div class="setrow"><span class="lbl">일본어 목소리</span>${vs.length>1?`<div class="row"><select id="setVoice" style="flex:1 1 200px;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)"><option value="">자동</option>${vs.map(v=>`<option value="${esc(v.name)}"${v.name===cur?" selected":""}>${esc(v.name.replace(/^Microsoft |^Google /,""))}</option>`).join("")}</select><button class="btn" id="setVoiceTry">들어보기</button></div><span class="note">예문·SJPT 질문·듣기 연습에 이 목소리를 써요. 상황 대화는 A·B를 남녀로 나눠요.</span>`:`<span class="note">이 기기에는 일본어 목소리가 ${vs.length?"1개뿐이라":"없어서"} 고를 수 없어요. 목소리는 휴대폰의 <b>설정 → 일반 → 글자 읽어주기(TTS)</b>에서 엔진(삼성/구글)과 일본어 음성을 바꾸면 달라져요. 구글 엔진은 일본어 목소리를 여러 개(여성·남성) 내려받을 수 있어요.</span>`}</div>`;})():""}
+    ${canSpeak?`<div class="setrow"><span class="lbl">목소리 높이</span><div class="row">${[[.8,"낮게"],[.9,"조금 낮게"],[1,"보통"],[1.1,"조금 높게"]].map(([v,t])=>`<button class="chip" data-pitset="${v}" aria-pressed="${PIT()===v}">${t}</button>`).join("")}<button class="btn" id="setVoiceTry">들어보기</button></div><span class="note">듣기·예문·대화·SJPT 질문 모두에 적용돼요.</span></div>`:""}
     <div class="setrow"><span class="lbl">화면 테마</span><div class="row">${[["auto","기기 설정 따라"],["light","밝게"],["dark","어둡게"]].map(([k,v])=>`<button class="chip" data-themeset="${k}" aria-pressed="${themeMode===k}">${v}</button>`).join("")}</div></div>
     <div class="setrow"><span class="lbl">후리가나 (읽기 표시)</span><div class="row">${Object.entries(FURI).map(([k,v])=>`<button class="chip" data-furiset="${k}" aria-pressed="${furiMode===k}">${v}</button>`).join("")}</div><span class="note">눌러서 보기: 한자를 누르면 그 단어 읽기만 보여요. 한자 외울 때 좋아요.</span></div>
     <div class="setrow"><span class="lbl">하루 새 단어</span><div class="row">${[5,10,20,30].map(n=>`<button class="chip" data-np="${n}" aria-pressed="${settings.newPerDay===n}">${n}개</button>`).join("")}</div></div>
@@ -2246,7 +2248,7 @@ function voiceSet(){
   if(vs.length>=2){const a=bestV(vs),b=vs.find(v=>v!==a)||a;return {m:{voice:m.length?bestV(m):b,pitch:.85},f:{voice:m.length?(vs.find(v=>!m.includes(v))||a):a,pitch:1.2},hasM:!!m.length,hasF:!!f.length,n:vs.length,two:true};}
   // 목소리가 1개뿐: 그 목소리의 성별(자동 판별 또는 사용자가 고른 값)에 맞춰 높낮이로 남녀를 나눔
   const one=vs[0]||null,g=devVoiceG()||(m.length?"m":FEMALE_V.test(one&&one.name||"")?"f":"m");
-  return g==="m"?{m:{voice:one,pitch:.95},f:{voice:one,pitch:1.6},hasM:true,hasF:false,n:vs.length,one:true,g}:{m:{voice:one,pitch:.6},f:{voice:one,pitch:1.05},hasM:false,hasF:true,n:vs.length,one:true,g};
+  return g==="m"?{m:{voice:one,pitch:.95},f:{voice:one,pitch:1.3},hasM:true,hasF:false,n:vs.length,one:true,g}:{m:{voice:one,pitch:.75},f:{voice:one,pitch:1.05},hasM:false,hasF:true,n:vs.length,one:true,g};
 }
 let dlgGender=(()=>{try{return localStorage.getItem("jpvocab-dlgv")||"AmBf";}catch(_){return "AmBf";}})();
 const genderOf=who=>(dlgGender==="AmBf")===(who==="A")?"m":"f";
@@ -2254,7 +2256,7 @@ let dlgOpt=(()=>{try{return {rate:.85,gap:1,...JSON.parse(localStorage.getItem("
 const saveDlgOpt=()=>{try{localStorage.setItem("jpvocab-dlgopt",JSON.stringify(dlgOpt));}catch(_){}};
 function speakAs(text,who,onend){
   if(!canSpeak||!text){onend&&onend();return;}
-  try{const v=voiceSet()[genderOf(who)],u=new SpeechSynthesisUtterance(text);u.lang="ja-JP";u.rate=dlgOpt.rate;u.pitch=v.pitch;if(v.voice)u.voice=v.voice;
+  try{const v=voiceSet()[genderOf(who)],u=new SpeechSynthesisUtterance(text);u.lang="ja-JP";u.rate=dlgOpt.rate;u.pitch=pit(v.pitch);if(v.voice)u.voice=v.voice;
     if(onend)u.onend=onend;speechSynthesis.speak(u);}catch(_){onend&&onend();}
 }
 let dlgPlay=null;
@@ -3054,6 +3056,7 @@ document.addEventListener("click",async e=>{
   if(t.id==="goAdd"){const dk=quiz.deck==="daily"?"daily":"work";setTab("manage");document.querySelector(`[data-ad="${dk}"]`)?.click();$("newWords").focus();return;}
   if(d.qd){quiz.deck=d.qd;quiz.cats=quiz.cats.filter(k=>words.some(w=>w.c===k&&inDeck(w,d.qd)));saveScope();return;}
   if(t.id==="openScope"){openScope();return;}
+  if(d.pitset){settings.pitch=+d.pitset;setMeta("settings",settings);renderSettings();speak("おはようございます。今日もよろしくお願いします。");return;}
   if(t.id==="setVoiceTry"){speak("おはようございます。今日もよろしくお願いします。");return;}
   if(t.id==="openScope2"){$("setSheet").hidden=true;openScope();return;}
   if(d.closescope){$("scopeSheet").hidden=true;return;}
@@ -3365,11 +3368,11 @@ function lsSteps(it){
   }
   const w=words.find(x=>x.id===it.id);if(!w)return [];
   const ja=lsRead(w),ko=lsMean(w),gap=lsOpt.gap*1000,s=[];
-  const jaS=[{say:ja,lang:"ja",g:"f"}];if(lsOpt.twice)jaS.push({wait:650},{say:ja,lang:"ja",g:"f"});
+  const jaS=[{say:ja,lang:"ja",g:"n"}];if(lsOpt.twice)jaS.push({wait:650},{say:ja,lang:"ja",g:"n"});
   if(it.dir==="kj")s.push({show:0,say:ko,lang:"ko"},{wait:gap},{show:1},...jaS);
   else s.push({show:0},...jaS,{wait:gap},{show:1,say:ko,lang:"ko"});
   const ex=it.ex>=0?examples(w)[it.ex]:null;
-  if(lsOpt.ex&&ex){s.push({wait:700},{show:2,say:ttsOf(ex.src,w),lang:"ja",g:it.g||"m"});if(ex.ko)s.push({wait:450},{show:3,say:String(ex.ko).replace(/[\[\]]/g,""),lang:"ko"});}
+  if(lsOpt.ex&&ex){s.push({wait:700},{show:2,say:ttsOf(ex.src,w),lang:"ja",g:"n"});if(ex.ko)s.push({wait:450},{show:3,say:String(ex.ko).replace(/[\[\]]/g,""),lang:"ko"});}
   s.push({wait:1000});return s;
 }
 const lsDur=it=>lsSteps(it).reduce((t,s)=>t+(s.wait?s.wait/1000:s.say?(s.lang==="ja"?lsJaSec(s.say,s.r):lsKoSec(s.say)):0),0);
@@ -3429,7 +3432,7 @@ function lsSay(text,lang,g,done,r){
   wd=setTimeout(chk,est*1.4+1200);
   try{const u=new SpeechSynthesisUtterance(text);
     if(lang==="ko"){u.lang="ko-KR";u.rate=lsOpt.rate;const v=koVoice();if(v)u.voice=v;}
-    else{u.lang="ja-JP";u.rate=r||lsOpt.rate*.92;const pv=g!=="m"?prefVoice():null;if(pv){u.voice=pv;u.pitch=1;}else{const v=voiceSet()[g||"f"];u.pitch=v.pitch;if(v.voice)u.voice=v.voice;}}
+    else{u.lang="ja-JP";u.rate=r||lsOpt.rate*.92;const vs=voiceSet(),pv=g!=="m"?prefVoice():null;if(g==="n"||(!g)){const v=pv||jaVoicePick();if(v)u.voice=v;u.pitch=pit(1);}else if(pv&&g==="f"&&!vs.one){u.voice=pv;u.pitch=pit(1);}else{const v=vs[g];u.pitch=pit(v.pitch);if(v.voice)u.voice=v.voice;}}
     u.onend=fin;u.onerror=fin;speechSynthesis.speak(u);}catch(_){fin();}
 }
 function lsRun(){
@@ -3553,7 +3556,7 @@ function lsTopHtml(){
   const remain=ls.q.slice(ls.i).reduce((t,x)=>t+lsDur(x),0),pct=ls.q.length?Math.round(ls.i/ls.q.length*100):0;
   return `<div id="lsTop"><div class="lsn-top"><span style="display:flex;gap:6px"><button class="lsn-x" data-lsquit="1">닫기</button><button class="lsn-x" data-lsopts="1" aria-pressed="${!!ls.showOpts}">⚙ 속도·간격</button></span><span>${Math.min(ls.i+1,ls.q.length)} / ${ls.q.length} · 남은 ${fmtMin(remain)}</span></div>
     <div class="lsn-bar" aria-hidden="true"><i style="width:${pct}%"></i></div>${ls.showOpts?(()=>{const it=ls.q[ls.i]||{},SH=it.k==="s",ch=(k,list)=>list.map(([v,l])=>`<button class="chip" data-lsopt="${k}" data-lsv="${v}" aria-pressed="${String(lsOpt[k])===String(v)}">${l}</button>`).join("");
-      return `<div class="lsn-qopts"><div class="row"><span class="lbl">속도</span>${ch("rate",[[0.8,"0.8×"],[1,"1.0×"],[1.2,"1.2×"]])}</div>
+      return `<div class="lsn-qopts"><div class="row"><span class="lbl">속도</span>${ch("rate",[[0.8,"0.8×"],[1,"1.0×"],[1.2,"1.2×"]])}</div><div class="row"><span class="lbl">목소리 높이</span>${[[.8,"낮게"],[.9,"조금 낮게"],[1,"보통"]].map(([v,t])=>`<button class="chip" data-pitset="${v}" aria-pressed="${PIT()===v}">${t}</button>`).join("")}</div>
         ${SH?`<div class="row"><span class="lbl">말할 시간</span>${ch("say",[[1,"1배"],[1.5,"1.5배"],[2,"2배"]])}</div>`
         :`<div class="row"><span class="lbl">${it.k==="d"?"대사 사이":"떠올릴 시간"}</span>${ch("gap",[[1,"1초"],[2,"2초"],[3,"3초"],[5,"5초"]])}</div>
         <div class="row"><span class="lbl">함께 듣기</span><button class="chip" data-lstog="ex" aria-pressed="${!!lsOpt.ex}">${it.k==="d"?"해석":"예문·해석"}</button>${it.k==="d"?"":`<button class="chip" data-lstog="twice" aria-pressed="${!!lsOpt.twice}">단어 두 번</button>`}</div>`}
@@ -3611,6 +3614,7 @@ function lsDoneHtml(){
   </div>`;
 }
 function lsClick(t,d){
+  if(d.pitset){settings.pitch=+d.pitset;setMeta("settings",settings);if(ls.view==="play")lsDrawTop();else lsDraw();return true;}
   if(d.lsunpick){ls.pick=null;lsDraw();return;}
   if(d.lsdpick){lsClose();sp.mode="dlg";sp.dv="list";setTab("speak");window.scrollTo(0,0);toast("대화 왼쪽 네모를 눌러 고른 뒤 아래 '듣기'를 누르세요.");return true;}
   if(d.lsclose){lsClose();return true;}
