@@ -288,7 +288,7 @@ textarea{min-height:76px;font-family:var(--f-jp);resize:vertical}
 .mrow .meta{min-width:0}
 .mrow .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:end}
 .mrow.editing{grid-template-columns:minmax(0,1fr)}
-.mlist{display:grid;gap:6px}.s3{display:grid;gap:12px}.s3pills{display:flex;gap:6px}.s3p{font-size:.8rem;padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted,#888)}.s3p.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}.s3p.done{opacity:.6}.s3g{display:grid;gap:4px}.progline{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;width:100%;text-align:left;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);font:inherit;font-size:.9rem;cursor:pointer;margin:12px 0}.progline .prow-a{margin-left:auto}.dlwords>summary{cursor:pointer}.dlwords .chip.on{border-color:var(--accent)}.dlwords .chip.on::before{content:"● ";color:var(--accent);font-size:.7em}.dwcard{display:grid;gap:4px;padding:10px 12px;border-radius:10px;background:var(--bg);margin-top:8px}.mfold>summary{cursor:pointer;list-style:none}.mfold>summary::-webkit-details-marker{display:none}.mfold>summary::before{content:"▸ ";color:var(--muted,#888)}.mfold[open]>summary::before{content:"▾ "}.mfold[open]>summary{margin-bottom:10px}
+.mlist{display:grid;gap:6px}.libsearch input,.booksearch input,.booksearch select{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);width:100%;box-sizing:border-box}.libsearch{margin:4px 0 6px}.booksearch{margin:8px 0;gap:8px}.booksearch select{width:auto;flex:0 0 auto}.s3{display:grid;gap:12px}.s3pills{display:flex;gap:6px}.s3p{font-size:.8rem;padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted,#888)}.s3p.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}.s3p.done{opacity:.6}.s3g{display:grid;gap:4px}.progline{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;width:100%;text-align:left;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);font:inherit;font-size:.9rem;cursor:pointer;margin:12px 0}.progline .prow-a{margin-left:auto}.dlwords>summary{cursor:pointer}.dlwords .chip.on{border-color:var(--accent)}.dlwords .chip.on::before{content:"● ";color:var(--accent);font-size:.7em}.dwcard{display:grid;gap:4px;padding:10px 12px;border-radius:10px;background:var(--bg);margin-top:8px}.mfold>summary{cursor:pointer;list-style:none}.mfold>summary::-webkit-details-marker{display:none}.mfold>summary::before{content:"▸ ";color:var(--muted,#888)}.mfold[open]>summary::before{content:"▾ "}.mfold[open]>summary{margin-bottom:10px}
 .toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);border-radius:10px;padding:10px 14px;display:flex;gap:12px;align-items:center;font-size:.88rem;max-width:calc(100% - 32px);z-index:20;box-shadow:0 6px 20px rgba(0,0,0,.18)}
 .toast button{font:inherit;font-weight:600;background:transparent;border:0;color:var(--accent-soft);cursor:pointer;text-decoration:underline}
 @media (max-width:560px){
@@ -661,6 +661,7 @@ html[data-furi] .lsn-play .lsn-hid rt,html[data-furi] .lsn-play .lsn-hid ruby rt
       <button class="chip" id="cardDir" aria-pressed="false" title="카드 앞면에 뜻을 보여 줘요">앞면: 일본어</button>
       <button class="chip" id="toggleFilters" aria-expanded="false">필터</button>
     </div>
+    <div class="row booksearch"><input id="bookQ" type="search" placeholder="일본어·읽기·한글 발음·뜻으로 찾기 (예: 납기, のうき, 노우키)" aria-label="단어 찾기" style="flex:1 1 220px"><select id="bookSort" aria-label="정렬"></select></div>
     <div class="filters" id="filters" hidden></div>
     <div id="bookBody"></div>
   </section>
@@ -1481,11 +1482,15 @@ function pqClick(d){
   return false;
 }
 /* ================= 자료 탭 ================= */
+document.addEventListener("keydown",e=>{if(e.target&&e.target.id==="libQ"&&e.key==="Enter"){e.preventDefault();clearTimeout(window.__lq);libSearch(e.target.value);}});
+document.addEventListener("input",e=>{if(e.target&&e.target.id==="libQ"&&e.target.value.trim().length>=2){clearTimeout(window.__lq);const v=e.target.value;window.__lq=setTimeout(()=>libSearch(v),700);}});
+function libSearch(v){state.deck="all";state.cat="all";state.filter="all";state.jl="all";state.bq=String(v||"").trim();state.view="list";state.listMax=80;state.idx=0;setTab("book");const q=$("bookQ");if(q){q.value=state.bq;q.focus();}}
 function renderLib(){
   const box=$("lib");if(!loaded){box.innerHTML='<div class="panel"><div class="empty">불러오는 중…</div></div>';return;}
   const rows=SRC_DEF.map(sd=>{const ws=srcWords(sd);if(!ws.length)return "";const learned=ws.filter(w=>!isNew(w)).length,due=ws.filter(isDue).length;
     return prowHtml(`data-src="${sd.k}"`,sd.t,`${ws.length}개 · 배운 것 ${learned}${sd.s?` · ${sd.s}`:""}`,due?`<span class="prow-due">복습 ${due}</span>`:"");}).join("");
-  box.innerHTML=`<h2 class="sec-h" style="margin-top:4px">단어·표현</h2>
+  box.innerHTML=`<div class="libsearch"><input id="libQ" type="search" enterkeyhint="search" placeholder="🔍 단어 찾기 · 일본어·읽기·한글 발음·뜻" aria-label="단어 찾기"></div>
+    <h2 class="sec-h" style="margin-top:4px">단어·표현</h2>
     <div class="plist">${rows}</div>
     <h2 class="sec-h">대화·전체</h2>
     <div class="plist">
@@ -1720,7 +1725,7 @@ function renderToday(){
     ${bkWarn?`<div class="bkline"><span>${bkDays===null?"아직 단어장을 백업한 적이 없어요.":`마지막 백업이 ${bkDays}일 전이에요.`}</span><button class="link" id="bkNow">지금 백업</button></div>`:""}`;
   const pm=$("progMore");if(pm)pm.ontoggle=e=>{state.progOpen=e.target.open;};
 }
-const APPV="10.26-1";
+const APPV="10.26-2";
 function renderSettings(){
   const b=$("setBody");if(!b)return;
   b.innerHTML=`<div class="setrow"><span class="lbl">공부 범위</span><div class="row"><span>${esc(scopeLabel())} (${scopeN()}개)</span><button class="btn" id="openScope2">바꾸기</button></div><span class="note">듣기·따라 말하기·말로 답하기에 쓸 자료 범위예요.</span></div>
@@ -1838,6 +1843,47 @@ function renderDone(){
 }
 
 /* ================= 단어장 ================= */
+
+/* ================= 단어 찾기: 일본어·읽기(히라가나/가타카나)·한글 발음·한국어 뜻 ================= */
+const K_ON={"":11,"ㄱ":0,"ㄴ":2,"ㄷ":3,"ㄹ":5,"ㅁ":6,"ㅂ":7,"ㅅ":9,"ㅇ":11,"ㅈ":12,"ㅊ":14,"ㅋ":15,"ㅌ":16,"ㅍ":17,"ㅎ":18};
+const K_V={"ㅏ":0,"ㅐ":1,"ㅑ":2,"ㅓ":4,"ㅔ":5,"ㅕ":6,"ㅗ":8,"ㅘ":9,"ㅛ":12,"ㅜ":13,"ㅝ":14,"ㅞ":15,"ㅟ":16,"ㅠ":17,"ㅡ":18,"ㅣ":20};
+const KANA_K=(()=>{const m={},row=(ks,on,vs)=>[...ks].forEach((k,i)=>{if(k!=="_")m[k]=[on,vs[i]];});const V="ㅏㅣㅜㅔㅗ";
+  row("あいうえお","",V);row("かきくけこ","ㅋ",V);row("がぎぐげご","ㄱ",V);row("さしすせそ","ㅅ","ㅏㅣㅡㅔㅗ");row("ざじずぜぞ","ㅈ","ㅏㅣㅡㅔㅗ");
+  row("たちつてと","ㅌ","ㅏㅣㅡㅔㅗ");m["ち"]=["ㅊ","ㅣ"];m["つ"]=["ㅊ","ㅡ"];row("だぢづでど","ㄷ","ㅏㅣㅡㅔㅗ");m["ぢ"]=["ㅈ","ㅣ"];m["づ"]=["ㅈ","ㅡ"];
+  row("なにぬねの","ㄴ",V);row("はひふへほ","ㅎ",V);row("ばびぶべぼ","ㅂ",V);row("ぱぴぷぺぽ","ㅍ",V);row("まみむめも","ㅁ",V);
+  row("や_ゆ_よ","","ㅑ_ㅠ_ㅛ");row("らりるれろ","ㄹ",V);m["わ"]=["","ㅘ"];m["を"]=["","ㅗ"];m["ゔ"]=["ㅂ","ㅜ"];return m;})();
+const hiraOf=t=>String(t||"").replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60));
+function kanaHangul(r){ // 가나 → 한글 발음 (대략)
+  const out=[];const h=hiraOf(r);
+  for(let i=0;i<h.length;i++){const c=h[i];
+    if(c==="ん"){if(out.length)out[out.length-1][2]="ㄴ";continue;}
+    if(c==="っ"){if(out.length)out[out.length-1][2]="ㅅ";continue;}
+    if(c==="ー"){continue;}
+    if("ゃゅょ".includes(c)&&out.length){const p=out[out.length-1],soft=["ㅅ","ㅈ","ㅊ"].includes(p[0]);p[1]=soft?{"ゃ":"ㅏ","ゅ":"ㅜ","ょ":"ㅗ"}[c]:{"ゃ":"ㅑ","ゅ":"ㅠ","ょ":"ㅛ"}[c];continue;}
+    if("ぁぃぅぇぉ".includes(c)&&out.length){out[out.length-1][1]={"ぁ":"ㅏ","ぃ":"ㅣ","ぅ":"ㅜ","ぇ":"ㅔ","ぉ":"ㅗ"}[c];continue;}
+    const k=KANA_K[c];if(k)out.push([k[0],k[1],""]);else out.push([null,c,""]);
+  }
+  const T={"":0,"ㄴ":4,"ㅅ":19};
+  return out.map(([o,v,t])=>o===null?v:String.fromCharCode(0xAC00+((K_ON[o]??11)*21+(K_V[v]??0))*28+(T[t]||0))).join("");
+}
+function hKey(t){ // 한글 비교용: 예사·거센·된소리, ㅐ/ㅔ, ㅡ/ㅜ 를 같게 보고 받침은 ㄴ류만 남김
+  const L=[0,0,2,3,3,5,6,7,7,9,9,11,12,12,12,0,3,7,18],V=[0,5,2,5,4,5,6,5,8,9,10,11,12,13,14,15,16,17,13,19,20];
+  let o="";for(const ch of String(t||"")){const c=ch.charCodeAt(0)-0xAC00;if(c<0||c>11171){if(!/\s/.test(ch))o+=ch;continue;}
+    const l=Math.floor(c/588);let v=Math.floor(c%588/28);const tt=c%28;if([9,10,12,13,14].includes(l))v={2:0,6:4,12:8,17:13}[v]??v;o+=String.fromCharCode(0xAC00+(L[l]*21+V[v])*28)+([4,16,21].includes(tt)?"ㄴ":"");}
+  return o;
+}
+function wordMatch(w,q){
+  const qs=String(q||"").trim().toLowerCase();if(!qs)return true;
+  const qk=hiraOf(qs).replace(/\s/g,"");
+  if([w.w,w.r].some(x=>hiraOf(String(x||"")).toLowerCase().replace(/\s/g,"").includes(qk)))return true;
+  if(/[가-힣]/.test(qs)){
+    if([w.m,w.kr,w.cm].some(x=>String(x||"").replace(/\s/g,"").includes(qs.replace(/\s/g,""))))return true;
+    if(!w._hk){const rr=hiraOf(w.r||w.w);w._hk=[hKey(kanaHangul(rr)),hKey(kanaHangul(rr.replace(/([おこそとのほもよろごぞどぼぽょ])う/g,"$1").replace(/([うくすつぬふむゆるぐずづぶぷゅ])う/g,"$1").replace(/([えけせてねへめれげぜでべぺ])い/g,"$1")))];}
+    const k=hKey(qs);return w._hk.some(x=>x.includes(k));
+  }
+  return false;
+}
+const BSORT={order:"기본 순서 (찾을 땐 정확한 것 먼저)",recent:"최근 추가",read:"읽기순 (あいう)",mean:"뜻순 (가나다)",weak:"덜 외운 것 먼저"};
 function bookList(){
   let list=words.filter(w=>inDeck(w,state.deck)&&(state.cat==="all"||w.c===state.cat)&&(state.jl==="all"||jlOf(w)===state.jl));
   if(state.filter==="flag") list=list.filter(flagOf);
@@ -1845,7 +1891,15 @@ function bookList(){
   else if(state.filter==="unseen") list=list.filter(isNew);
   else if(state.filter==="master") list=list.filter(w=>lvOf(w)>=MAXLV);
   else if(state.filter==="done") list=list.filter(isDone);
-  if(state.filter==="recent") list.sort((a,b)=>(b.n||0)-(a.n||0));
+  if(state.bq){list=list.filter(w=>wordMatch(w,state.bq));
+    if(!state.bsort||state.bsort==="order"){const q=hiraOf(state.bq.trim().toLowerCase()),rk=w=>{const a=hiraOf(String(w.w||"")),b=hiraOf(String(w.r||""));return a===q||b===q||String(w.m||"").split(/[,，·/]/).map(x=>x.trim()).includes(state.bq.trim())?0:a.startsWith(q)||b.startsWith(q)||String(w.m||"").startsWith(state.bq.trim())?1:a.includes(q)||b.includes(q)||String(w.m||"").includes(state.bq.trim())?2:3;};
+      list=list.map(w=>[w,rk(w),String(w.w||"").length]).sort((x,y)=>(x[1]-y[1])||(x[2]-y[2])).map(x=>x[0]);return list;}}
+  const so=state.bsort||"order";
+  if(so==="read") list.sort((a,b)=>hiraOf(a.r||a.w).localeCompare(hiraOf(b.r||b.w),"ja"));
+  else if(so==="mean") list.sort((a,b)=>String(a.m||"").localeCompare(String(b.m||""),"ko"));
+  else if(so==="weak") list.sort((a,b)=>(isNew(a)-isNew(b))||(lvOf(a)-lvOf(b)));
+  else if(so==="recent") list.sort((a,b)=>(b.n||0)-(a.n||0));
+  else if(state.filter==="recent") list.sort((a,b)=>(b.n||0)-(a.n||0));
   else if(state.shuffled){const pos=new Map(state.shuffled.map((id,i)=>[id,i]));list.sort((a,b)=>(pos.get(a.id)??1e9)-(pos.get(b.id)??1e9));}
   else list.sort(byOrder);
   return list;
@@ -1869,11 +1923,12 @@ function rememberCard(id){
 function renderBook(){
   if(!loaded){$("bookBody").innerHTML='<div class="empty">단어를 불러오는 중…</div>';return;}
   const list=bookList();
-  $("bookSum").textContent=`${DECKS[state.deck]} · ${state.cat==="all"?"전체 분류":CATS[state.cat]} · ${FILTERS[state.filter]}${state.jl==="all"?"":" · JLPT "+JLN[state.jl]} · ${list.length}개`;
+  {const bs=$("bookSort");if(bs)bs.value=state.bsort||"order";const bq=$("bookQ");if(bq&&document.activeElement!==bq&&bq.value!==(state.bq||""))bq.value=state.bq||"";}
+  $("bookSum").textContent=`${state.bq?`"${state.bq}" 찾기 · `:""}${DECKS[state.deck]} · ${state.cat==="all"?"전체 분류":CATS[state.cat]} · ${FILTERS[state.filter]}${state.jl==="all"?"":" · JLPT "+JLN[state.jl]} · ${list.length}개`;
   $("viewCard").setAttribute("aria-pressed",state.view==="card");$("viewList").setAttribute("aria-pressed",state.view==="list");
   $("cardDir").hidden=state.view!=="card";$("cardDir").textContent=state.cardDir==="ko"?"앞면: 뜻":"앞면: 일본어";$("cardDir").setAttribute("aria-pressed",state.cardDir==="ko");
   if(state.filtersOpen) renderFilters();
-  if(!list.length){$("bookBody").innerHTML=`<div class="panel" style="margin-top:12px"><div class="empty">${state.filter==="flag"?"다시 보기로 표시된 단어가 없어요.":"이 조건에 맞는 단어가 없어요."}</div></div>`;return;}
+  if(!list.length){$("bookBody").innerHTML=`<div class="panel" style="margin-top:12px"><div class="empty">${state.filter==="flag"?"다시 보기로 표시된 단어가 없어요.":(state.bq?"찾는 단어가 없어요. 다른 말로 찾거나 필터를 '전체'로 바꿔 보세요.":"이 조건에 맞는 단어가 없어요.")}</div></div>`;return;}
   if(state.view==="card"){
     const key=bookKey()+(state.shuffled?"|s":"");
     if(state.lastKey!==key){state.lastKey=key;if(!state.shuffled){const at=list.findIndex(x=>x.id===bookPos[bookKey()]);state.idx=at>=0?at:0;}}
@@ -2899,6 +2954,9 @@ document.addEventListener("click",e=>{
 },true);
 $("viewCard").onclick=()=>{state.view="card";state.flipped=false;try{localStorage.setItem("jpvocab-view","card");}catch(_){}renderBook();};
 $("cardDir").onclick=()=>{state.cardDir=state.cardDir==="ko"?"jp":"ko";state.flipped=false;renderBook();};
+$("bookSort").innerHTML=Object.entries(BSORT).map(([k,v])=>`<option value="${k}">${v}</option>`).join("");
+$("bookQ").oninput=e=>{state.bq=e.target.value;state.listMax=80;if(state.bq&&state.view==="card"){state.view="list";}renderBook();};
+$("bookSort").onchange=e=>{state.bsort=e.target.value;state.idx=0;renderBook();};
 $("viewList").onclick=()=>{state.view="list";try{localStorage.setItem("jpvocab-view","list");}catch(_){}renderBook();};
 $("toggleFilters").onclick=()=>{state.filtersOpen=!state.filtersOpen;$("filters").hidden=!state.filtersOpen;$("toggleFilters").setAttribute("aria-expanded",state.filtersOpen);renderBook();};
 $("autofill").onclick=autofill;
@@ -2967,7 +3025,7 @@ document.addEventListener("click",async e=>{
   if(t.id==="goTriage"){triStart();return;}
   if(d.src){srcGo(d.src);return;}
   if(t.id==="srcBack"){leaveQuiz();return;}
-  if(t.id==="libBook"){state.deck="all";state.cat="all";state.filter="all";state.jl="all";state.idx=0;state.flipped=false;setTab("book");return;}
+  if(t.id==="libBook"){state.bq="";const bq=$("bookQ");if(bq)bq.value="";state.deck="all";state.cat="all";state.filter="all";state.jl="all";state.idx=0;state.flipped=false;setTab("book");return;}
   if(d.gopen){$("gpop").hidden=true;gs.view=d.gopen;if(state.tab!=="gram")setTab("gram");else renderGram();pushLayer("gview");window.scrollTo(0,0);return;}
   if(d.gtopic){gs.topic=d.gtopic;renderGram();return;}
   if(d.gfav){const w=words.find(x=>x.id===d.gfav);if(w){w.fav=!w.fav;writeWord(w.id,{fav:w.fav});renderGram();}return;}
